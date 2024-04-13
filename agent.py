@@ -1,7 +1,8 @@
 import simulation_state
 
 class Agent:
-    def __init__(self, is_server, token_alloc):
+    def __init__(self, name, is_server, token_alloc):
+        self.name = name
         self.is_server = is_server
         self.token_alloc = token_alloc
         self.is_faulty = False

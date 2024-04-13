@@ -14,6 +14,7 @@ class Simulator:
     def init_agnets(self):
         # create tokens
         # create initial token allocation
+        # create owner names and update in simulation_state
         # create agens according to simulation specifications
         pass
 
