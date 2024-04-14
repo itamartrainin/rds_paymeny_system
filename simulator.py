@@ -1,22 +1,37 @@
 import simulation_state
+import interfaces
+import uuid
+
+from agent import Agent
 
 class Simulator:
 
-    def __init__(self, num_start_clients, num_start_servers):
+    def __init__(self, num_start_clients, num_start_servers, total_tokens, num_tokens_per_client):
+        self.total_tokens = total_tokens
+        self.num_tokens_per_client = num_tokens_per_client
+
         simulation_state.num_clients = num_start_clients
         simulation_state.num_servers = num_start_servers
 
+        self.tokens = []
         self.agents = []
         self.active_messages = []
 
-        self.init_agnets()
+        self.generate_tokens()
+        self.init_agents()
 
-    def init_agnets(self):
-        # create tokens
-        # create initial token allocation
-        # create owner names and update in simulation_state
-        # create agens according to simulation specifications
-        pass
+    def generate_tokens(self):
+        self.tokens = {}
+        for _ in range(self.total_tokens):
+            t = interfaces.Token()
+            self.tokens[t.id] = t
+
+    def init_agents(self):
+        for i in range(simulation_state.num_clients + simulation_state.num_servers):
+            if i < simulation_state.num_clients:
+                is_server = (i >= simulation_state.num_clients)
+                tokens = self.tokens[i*self.num_tokens_per_client:(i+1)*self.num_tokens_per_client]
+                Agent(is_server, tokens)
 
     def step(self):
         """

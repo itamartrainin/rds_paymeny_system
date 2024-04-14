@@ -1,11 +1,20 @@
+import uuid
+
 import simulation_state
 
 class Agent:
-    def __init__(self, name, is_server, token_alloc):
-        self.name = name
+    def __init__(self, is_server, tokens):
         self.is_server = is_server
-        self.token_alloc = token_alloc
+        self.tokens = tokens
         self.is_faulty = False
+
+        self.name = self.generate_owner_name()
+
+    @staticmethod
+    def generate_owner_name():
+        owner_name = uuid.uuid4()
+        simulation_state.owner_names.append(owner_name)
+        return owner_name
 
     def step(self, incoming_messages):
         outgoing_messages = []
