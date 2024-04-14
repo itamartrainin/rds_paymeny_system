@@ -1,6 +1,8 @@
+import copy
+import random
+
 import simulation_state
 import interfaces
-import uuid
 
 from agent import Agent
 
@@ -10,15 +12,18 @@ class Simulator:
         self.total_tokens = total_tokens
         self.num_tokens_per_client = num_tokens_per_client
 
-        simulation_state.num_clients = num_start_clients
-        simulation_state.num_servers = num_start_servers
+        self.num_start_clients = num_start_clients
+        self.num_start_servers = num_start_servers
 
-        self.tokens = []
-        self.agents = []
+        self.tokens = {}
+        self.agents = {}
         self.active_messages = []
 
         self.generate_tokens()
         self.init_agents()
+
+        for agent in self.agents:
+            agent.set_tokens_db(copy.deepcopy(self.tokens))
 
     def generate_tokens(self):
         self.tokens = {}
@@ -27,15 +32,54 @@ class Simulator:
             self.tokens[t.id] = t
 
     def init_agents(self):
-        for i in range(simulation_state.num_clients + simulation_state.num_servers):
-            if i < simulation_state.num_clients:
-                is_server = (i >= simulation_state.num_clients)
-                tokens = self.tokens[i*self.num_tokens_per_client:(i+1)*self.num_tokens_per_client]
-                Agent(is_server, tokens)
+        for i in range(self.num_start_clients + self.num_start_servers):
+            is_server = (i >= self.num_start_clients)
+            agent = Agent(is_server)
+
+            if is_server:
+                simulation_state.servers.append(agent.id)
+            else:
+                simulation_state.clients.append(agent.id)
+
+            self.agents[agent.id] = agent
+
+    def allocate_tokens(self, agent_id):
+        allocated_tokens_counter = 0
+        while allocated_tokens_counter < self.num_tokens_per_client:
+            for token in list(self.tokens.values()):
+                if token.owner is None:
+                    token.owner = agent_id
+                    allocated_tokens_counter += 1
 
     def step(self):
-        """
-        1. For each message in active_messages decide if delivers on this step (async delay)
-        2. For each agnet perform setep and collect new messages
-        3. For each client message print performed actions
-        """
+        # 1. For each message in active_messages decide if delivers on this step (async delay)
+        to_deliver, no_change = self.delay_messages()
+
+        to_deliver_by_receiver = self.group_by_receiver(to_deliver)
+
+        # 2. For each agent perform step and collect new messages
+        new_msgs = []
+        for agent in self.agents:
+            ret = agent.step(to_deliver_by_receiver[agent.id])
+            new_msgs.append(ret)
+
+        self.active_messages = no_change + new_msgs
+
+    def delay_messages(self):
+        to_deliver = []
+        no_change = []
+        for msg in self.active_messages:
+            if random.random() > 0.5:
+                to_deliver.append(msg)
+            else:
+                no_change.append(msg)
+        return to_deliver, no_change
+
+    @staticmethod
+    def group_by_receiver(to_deliver):
+        to_deliver_by_receiver = {}
+        for msg in to_deliver:
+            if msg.receiver_id not in to_deliver_by_receiver:
+                to_deliver_by_receiver[msg.receiver_id] = []
+            to_deliver_by_receiver[msg.receiver_id].append(msg)
+        return to_deliver_by_receiver
