@@ -1,14 +1,16 @@
 from abc import abstractmethod
+from optparse import Option
 import random
 import uuid
 
+from interfaces import Message
 import simulation_state
 
 class Agent:
     def __init__(self, is_server, omission_rate = 0):
         self.omission_rate = float(omission_rate)
         self.tokens_db = None
-        self.my_tokens = []
+        self.my_tokens = [] 
 
         self.id = self.generate_id()
 
@@ -34,17 +36,16 @@ class Agent:
             if token.owner == self.id:
                 self.my_tokens.append(token.id)
 
-    def step(self, incoming_messages):
-        def omission_msgs(self, msgs):    
+    def step(self, msg) -> Option[Message]:
+        def omission_msg(self):    
             # Drop messages according to the omission rate
-            for message in msgs:
-                if random.random() < self.omission_rate:
-                    # Message is dropped
-                    msgs.remove(message)
-            return msgs
+            return random.random() < self.omission_rate
         
+        if omission_msg():
+            return
+
         # 1. Handle incoming messages according to role
-        outgoing_messages = self.role.handle_incoming(omission_msgs(incoming_messages))
+        outgoing_message = self.role.handle_incoming(msg)
 
         # 2. Transform
         if self.should_transform():
@@ -57,7 +58,7 @@ class Agent:
             # Some logic on generating pay messages
             pass
 
-        return omission_msgs(outgoing_messages)
+        return outgoing_message if omission_msg() else None
 
     @abstractmethod
     def handle_incoming(self, incoming_messages):

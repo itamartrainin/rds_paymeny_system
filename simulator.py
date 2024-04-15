@@ -1,8 +1,9 @@
 import copy
 import random
+from typing import List
 
 import simulation_state
-import interfaces
+from interfaces import Message, Token
 
 from agent import Agent
 
@@ -18,7 +19,7 @@ class Simulator:
 
         self.tokens = {}
         self.agents = {}
-        self.active_messages = []
+        self.msgs_queue = []
 
         self.generate_tokens()
         self.init_agents()
@@ -29,7 +30,7 @@ class Simulator:
     def generate_tokens(self):
         self.tokens = {}
         for _ in range(self.total_tokens):
-            t = interfaces.Token()
+            t = Token()
             self.tokens[t.id] = t
 
     def init_agents(self):
@@ -53,35 +54,38 @@ class Simulator:
                     allocated_tokens_counter += 1
 
     def step(self):
-        # 1. For each message in active_messages decide if delivers on this step (async delay)
-        to_deliver, no_change = self.delay_messages()
+        # Randomly delay some of the messages to the next step
+        to_deliver = self.choose_and_delay_messages()
 
-        to_deliver_by_receiver = self.group_by_receiver(to_deliver)
-
-        # 2. For each agent perform step and collect new messages. Take the agents randomly.
-        new_msgs = []
-        shuffled_agents = random.shuffle(self.agents.keys())
-        for agent in shuffled_agents:
-            ret = agent.step(to_deliver_by_receiver[agent.id])
-            new_msgs.append(ret)
-
-        self.active_messages = no_change + new_msgs
-
-    def delay_messages(self):
-        to_deliver = []
-        no_change = []
-        for msg in self.active_messages:
-            if len(to_deliver) < self.max_messages_per_step and random.random() > 0.5:
-                to_deliver.append(msg)
-            else:
-                no_change.append(msg)
-        return to_deliver, no_change
-
-    @staticmethod
-    def group_by_receiver(to_deliver):
-        to_deliver_by_receiver = {}
         for msg in to_deliver:
-            if msg.receiver_id not in to_deliver_by_receiver:
-                to_deliver_by_receiver[msg.receiver_id] = []
-            to_deliver_by_receiver[msg.receiver_id].append(msg)
-        return to_deliver_by_receiver
+            ret = self.agents[msg.receiver_id].step(msg)
+
+            if ret is None:
+                continue
+        
+            # If ret is a message, we need to append it to the queue.
+            # If ret is a broadcast message, we need to duplicate the message to all servers
+            if ret.get().receiver_id == Message.BROADCAST_SERVER:
+                # Duplicate the message to all servers
+                all_servers = simulation_state.get_all_servers()
+                for server in all_servers:
+                    duplicated_msg = ret.get().copy()
+                    duplicated_msg.receiver_id = server.id
+                    self.msgs_queue.append(duplicated_msg)
+            else:
+                self.msgs_queue.append(ret.get())
+
+    # Delays messages and returns ones to be sent in the current step
+    def choose_and_delay_messages(self) -> List[Message]:
+        to_deliver = []
+
+        # Randomly shuffle the queue
+        random.shuffle(self.msgs_queue)
+
+        # Randomly select which messages to send in this step
+        for msg in self.msgs_queue:
+            if len(to_deliver) < self.max_messages_per_step and random.random() > 0.5:
+                self.msgs_queue.remove(msg)
+                to_deliver.append(msg)
+
+        return to_deliver

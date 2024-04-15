@@ -19,6 +19,8 @@ class MessageType(Enum):
     OK = 5
 
 class Message:
+    BROADCAST_SERVER = 1
+
     def __init__(self, type : MessageType, sender_id, receiver_id, content):
         self.type = type
         self.sender_id = sender_id
