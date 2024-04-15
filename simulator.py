@@ -8,12 +8,13 @@ from agent import Agent
 
 class Simulator:
 
-    def __init__(self, num_start_clients, num_start_servers, total_tokens, num_tokens_per_client):
+    def __init__(self, num_start_clients, num_start_servers, total_tokens, num_tokens_per_client, max_messages_per_step):
         self.total_tokens = total_tokens
         self.num_tokens_per_client = num_tokens_per_client
 
         self.num_start_clients = num_start_clients
         self.num_start_servers = num_start_servers
+        self.max_messages_per_step = max_messages_per_step
 
         self.tokens = {}
         self.agents = {}
@@ -22,7 +23,7 @@ class Simulator:
         self.generate_tokens()
         self.init_agents()
 
-        for agent in self.agents:
+        for agent in self.agents.values():
             agent.set_tokens_db(copy.deepcopy(self.tokens))
 
     def generate_tokens(self):
@@ -57,9 +58,10 @@ class Simulator:
 
         to_deliver_by_receiver = self.group_by_receiver(to_deliver)
 
-        # 2. For each agent perform step and collect new messages
+        # 2. For each agent perform step and collect new messages. Take the agents randomly.
         new_msgs = []
-        for agent in self.agents:
+        shuffled_agents = random.shuffle(self.agents.keys())
+        for agent in shuffled_agents:
             ret = agent.step(to_deliver_by_receiver[agent.id])
             new_msgs.append(ret)
 
@@ -69,7 +71,7 @@ class Simulator:
         to_deliver = []
         no_change = []
         for msg in self.active_messages:
-            if random.random() > 0.5:
+            if len(to_deliver) < self.max_messages_per_step and random.random() > 0.5:
                 to_deliver.append(msg)
             else:
                 no_change.append(msg)
