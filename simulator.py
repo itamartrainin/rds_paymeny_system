@@ -3,7 +3,7 @@ import random
 from typing import List
 
 import simulation_state
-from interfaces import Message, Token
+from interfaces import AgentRole, Message, Token
 
 from agent import Agent
 
@@ -18,13 +18,13 @@ class Simulator:
         self.max_messages_per_step = max_messages_per_step
 
         self.tokens = {}
-        self.agents = {}
+        simulation_state.agents = {}
         self.msgs_queue = []
 
         self.generate_tokens()
         self.init_agents()
 
-        for agent in self.agents.values():
+        for agent in simulation_state.agents.values():
             agent.set_tokens_db(copy.deepcopy(self.tokens))
 
     def generate_tokens(self):
@@ -35,15 +35,15 @@ class Simulator:
 
     def init_agents(self):
         for i in range(self.num_start_clients + self.num_start_servers):
-            is_server = (i >= self.num_start_clients)
-            agent = Agent(is_server)
+            agent_role = AgentRole.SERVER if (i >= self.num_start_clients) else AgentRole.CLIENT
+            agent = Agent(agent_role)
 
-            if is_server:
-                simulation_state.servers.append(agent.id)
+            simulation_state.agents[agent.id] = agent
+            if agent_role:
+                simulation_state.servers[agent.id] = agent
             else:
-                simulation_state.clients.append(agent.id)
+                simulation_state.clients[agent.id] = agent
 
-            self.agents[agent.id] = agent
 
     def allocate_tokens(self, agent_id):
         allocated_tokens_counter = 0
@@ -58,7 +58,7 @@ class Simulator:
         to_deliver = self.choose_and_delay_messages()
 
         for msg in to_deliver:
-            ret = self.agents[msg.receiver_id].step(msg)
+            ret = simulation_state.agents[msg.receiver_id].step(msg)
 
             if ret is None:
                 continue

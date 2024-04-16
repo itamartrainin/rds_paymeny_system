@@ -1,6 +1,10 @@
 import uuid
 from enum import Enum
 
+class AgentRole(Enum):
+    CLIENT = 1
+    SERVER = 2
+
 class Token:
     def __init__(self):
         self.id = self.generate_id()
