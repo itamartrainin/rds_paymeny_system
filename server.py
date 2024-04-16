@@ -5,7 +5,7 @@ class Server(Agent):
     def __init__(self):
         pass
 
-    def handle_incoming(self : Agent, incoming_messages):
+    def handle_incoming(self : Agent, msg_in):
         # Perform client/server logic based on incoming messages
         # Return new messages based on that logic.
         raise NotImplementedError('server message handling')

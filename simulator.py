@@ -67,13 +67,16 @@ class Simulator:
             # If ret is a broadcast message, we need to duplicate the message to all servers
             if ret.get().receiver_id == Message.BROADCAST_SERVER:
                 # Duplicate the message to all servers
-                all_servers = simulation_state.get_all_servers()
-                for server in all_servers:
+                for server in simulation_state.get_all_servers():
                     duplicated_msg = ret.get().copy()
                     duplicated_msg.receiver_id = server.id
                     self.msgs_queue.append(duplicated_msg)
             else:
                 self.msgs_queue.append(ret.get())
+
+        # No matter the messages, empty step all agents to generate actions
+        for agent in simulation_state.get_all_agents():
+            agent.step(None)
 
     # Delays messages and returns ones to be sent in the current step
     def choose_and_delay_messages(self) -> List[Message]:
