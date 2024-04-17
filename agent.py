@@ -13,8 +13,10 @@ class Agent:
         self.tokens_db = None
         self.my_tokens = []
         self.role = role
-
+        self.upon_registry = []
         self.id = self.generate_id()
+        self.during_action = False
+        self.is_faulty = False
 
     def set_omission_rate(self, omission_rate):
         self.omission_rate = omission_rate
@@ -57,6 +59,19 @@ class Agent:
             return self.client_create_action()     
 
     def handle_incoming(self, msg_in):
+        # Check if we are waiting for this type of message:
+        for upon in self.upon_registry:
+            func_to_run, upon_filter, upon_amount, msgs = upon
+            if upon_filter(msg_in):
+                msgs.append(msg_in)
+                
+                # If enough messages where received run the function and remove the upon
+                if len(msgs) == upon_amount:
+                    self.upon_registry.remove(upon)
+                    return func_to_run(msgs)
+
+        # For now, don't handle random messages
+        return
         if self.role == AgentRole.CLIENT:
             return self.client_handle_incoming(msg_in)
         elif self.role == AgentRole.SERVER:
@@ -85,12 +100,22 @@ class Agent:
 
         return out_msg
 
+    # Register a function to run when receiving an amount of messages of the same type
+    def register_upon(self, func_to_run, upon_filter, upon_amount):
+        self.upon_registry.append((func_to_run, upon_filter, upon_amount, []))    
+
     def decide_is_faulty(self):
         max_faulty = int(len(simulation_state.servers)/2)
         if len(simulation_state.faulty) < max_faulty:
             simulation_state.faulty.append(self.id)
             return True
         return False
+    
+    def give_token(self, token: Token):
+        self.my_tokens.append(token)
+
+    def remove_token(self, token: Token):
+        self.my_tokens.remove(token)
     
     #################
     # Client Logics #
