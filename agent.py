@@ -3,13 +3,13 @@ from enum import Enum
 import random
 from typing import Optional
 import uuid
-from interfaces import AgentRole, Message, MessageType
+from interfaces import AgentRole, Message, MessageType, Token
 import simulation_state
 
 class Agent:
     def __init__(self, role : AgentRole, omission_rate = 0):
         self.omission_rate = float(omission_rate)
-        self.transform_rate = 0.05
+        self.transform_rate = 0
         self.tokens_db = None
         self.my_tokens = []
         self.role = role
@@ -35,25 +35,24 @@ class Agent:
     def step(self, msg_in) -> Optional[Message]:
         def omission_msg(omission_rate = self.omission_rate):    
             # Drop messages according to the omission rate
-            return random.random() < omission_rate
+            return random.random() > omission_rate
         
         msg_out = None
 
         # if received a message and it didn't omission - handle it according to the role
         if msg_in is not None and not omission_msg():
             msg_out = self.handle_incoming(msg_in)
+            return msg_out if omission_msg() else None
 
-        # If didn't receive a msg we can maybe transform or do a role action (only client)
+        # For simplicity, we ignore sending omission when running a self initiated action
+        # If didn't receive a msg we can maybe do an action (if one is not in progress)
         # Decide randomly if to transform
-        elif self.should_transform():
-            msg_out = self.transform()
+        elif not self.during_action and self.should_transform():
+            return self.transform()
 
         # Decide randomly if to do an action (clients only)
-        elif self.role == AgentRole.CLIENT:
-            msg_out = self.client_create_action()
-        
-        # Send output message if it didn't omission
-        return msg_out if omission_msg() else None
+        elif not self.during_action and self.role == AgentRole.CLIENT:
+            return self.client_create_action()     
 
     def handle_incoming(self, msg_in):
         if self.role == AgentRole.CLIENT:
@@ -105,7 +104,7 @@ class Agent:
 
     def client_create_action(self) -> Optional[Message]:
         ACTIONS = [[MessageType.PAY, MessageType.GET_TOKENS, None], 
-                    [0.3,             0.4,                    0.3]]
+                    [0.1,             0.2,                    0.7]]
     
         action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0]
         

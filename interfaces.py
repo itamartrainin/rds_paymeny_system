@@ -30,3 +30,6 @@ class Message:
         self.sender_id = sender_id
         self.receiver_id = receiver_id
         self.content = content
+
+    def __str__(self):
+        return f"Type: {self.type}, From: {self.sender_id}, To: {self.receiver_id}, Content: {self.content}"
