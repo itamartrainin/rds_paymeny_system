@@ -4,7 +4,7 @@ import interfaces
 agents = {}
 servers = {}
 clients = {}
-faulty = []
+faulty_counter = 0 
 
 def get_random_server():
     # Choose a random server from the servers list
@@ -25,6 +25,8 @@ def get_all_agents():
 
 def can_add_server():
     return len(servers.values()) < 7
+def can_add_faulty_server():
+    return (faulty_counter + 1) < len(servers.values()) / 2
 def can_remove_server():
     return len(servers.values()) > 3
 

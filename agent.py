@@ -18,6 +18,8 @@ class Agent:
 
     def set_omission_rate(self, omission_rate):
         self.omission_rate = omission_rate
+        # if is server and omission rate is positive, this is faulty
+        self.is_faulty = True
 
     @staticmethod
     def generate_id():
@@ -70,9 +72,9 @@ class Agent:
     def transform(self) -> Message:
         # Run the specific logic of the role
         if self.role == AgentRole.CLIENT:
-            out_msg = self.client_transform()
+            out_msg = self.transform_to_server()
         elif self.role == AgentRole.SERVER:
-            out_msg = self.server_transform()
+            out_msg = self.transform_to_client()
 
         # These actions should only happen after transform is finished
         # # Update the simulation state
@@ -99,8 +101,8 @@ class Agent:
         # Return new messages based on that logic.
         raise NotImplementedError('client message handling')
         
-    def client_transform(self):
-        raise NotImplementedError('client transforming')
+    def transform_to_server(self):
+        raise NotImplementedError('transform_to_server')
 
     def client_create_action(self) -> Optional[Message]:
         ACTIONS = [[MessageType.PAY, MessageType.GET_TOKENS, None], 
@@ -135,7 +137,7 @@ class Agent:
         # Return new messages based on that logic.
         raise NotImplementedError('server message handling')
         
-    def server_transform(self):
+    def transform_to_client(self):
         raise NotImplementedError('server transforming')
 
     def server_handle_pay(self, msg : Message):
