@@ -6,6 +6,17 @@ servers = {}
 clients = {}
 faulty_counter = 0 
 
+def get_agents_amount():
+    return len(agents.values())
+def get_servers_amount():
+    return len(servers.values())
+def get_clients_amount():
+    return len(clients.values())
+def get_n_minus_t_amount():
+    n = get_servers_amount()
+    f = n // 2
+    return n-f
+
 def get_random_server():
     # Choose a random server from the servers list
     return random.choice(list(servers.values()))

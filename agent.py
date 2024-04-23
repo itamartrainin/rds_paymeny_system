@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from enum import Enum
 import random
-from typing import Optional
+from typing import List, Optional
 import uuid
 from interfaces import AgentRole, Message, MessageType, Token
 import simulation_state
@@ -34,19 +34,19 @@ class Agent:
         # Initialize my tokens from the whole dictionary
         for token in list(self.tokens_db.values()):
             if token.owner == self.id:
-                self.my_tokens.append(token.id)
+                self.my_tokens.append(token)
 
     def step(self, msg_in) -> Optional[Message]:
         def omission_msg(omission_rate = self.omission_rate):    
             # Drop messages according to the omission rate
-            return random.random() > omission_rate
+            return random.random() < omission_rate
         
         msg_out = None
 
         # if received a message and it didn't omission - handle it according to the role
         if msg_in is not None and not omission_msg():
             msg_out = self.handle_incoming(msg_in)
-            return msg_out if omission_msg() else None
+            return msg_out if not omission_msg() else None
 
         # For simplicity, we ignore sending omission when running a self initiated action
         # If didn't receive a msg we can maybe do an action (if one is not in progress)

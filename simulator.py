@@ -21,13 +21,12 @@ class Simulator:
         simulation_state.agents = {}
         self.msgs_queue = []
 
-        self.generate_tokens()
         self.init_agents()
+        self.generate_tokens()
+        self.allocate_tokens()
 
         for agent in simulation_state.get_all_agents():
             agent.set_tokens_db(copy.deepcopy(self.tokens))
-
-        self.allocate_tokens()
 
     def generate_tokens(self):
         self.tokens = {}
@@ -43,7 +42,8 @@ class Simulator:
                 simulation_state.servers[agent.id] = agent
                 # Make some servers faulty
                 if simulation_state.faulty_counter < self.num_start_servers / 2:
-                    agent.set_omission_rate(0.8)
+                    # agent.set_omission_rate(0.8)
+                    # agent.is_faulty = True
                     simulation_state.faulty_counter += 1
             else:
                 agent_role = AgentRole.CLIENT
@@ -100,7 +100,7 @@ class Simulator:
 
         # Randomly select which messages to send in this step
         for msg in self.msgs_queue:
-            if len(to_deliver) < self.max_messages_per_step and random.random() > 0.5:
+            if len(to_deliver) < self.max_messages_per_step:
                 self.msgs_queue.remove(msg)
                 to_deliver.append(msg)
 
