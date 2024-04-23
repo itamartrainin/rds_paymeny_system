@@ -134,24 +134,51 @@ class Agent:
         action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0]
         
         if action_type == MessageType.PAY and (len(self.my_tokens) > 0):
-            return self.create_pay()
+            return self.run_pay_request()
         elif action_type == MessageType.GET_TOKENS:
             return self.run_get_request()
         else:
             return None
-    
-    def create_pay(self) -> Message:
+        
+    def run_pay_request(self) -> Message:
         # Choose a random token to send and a random owner to receive
         token_to_sell = random.choice(self.my_tokens)
         buyer_id = simulation_state.get_random_agent().id
-        return Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
+        to_send = Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
+        
+        # When receiving answers, remove the sold token from the list
+        def handle_ack_pay(agent : Agent, msgs : List[Message]):
+            print(self.id + " Sold the token ", token_to_sell.id, " to ", buyer_id)
+
+            # Do the transfer of the token 
+            self.my_tokens.remove(token_to_sell)
+            simulation_state.agents[buyer_id].my_tokens.append(token_to_sell)
+
+            # Unlock action-doing
+            agent.during_action = False
+
+        # Wait for ACK_PAY responses with the right token_id and version
+        def handle_ack_filter(msg : Message) -> bool:
+            if msg.type != MessageType.ACK_PAY:
+                return False
+            
+            token_id, token_version = msg.content
+            return token_id == token_to_sell.id and token_version == (token_to_sell.version + 1)
+
+        # Register the handling
+        self.register_upon(handle_ack_pay, handle_ack_filter, simulation_state.get_n_minus_t_amount())
+        
+        # Lock action-doing
+        self.during_action = True
+
+        return to_send
 
     def run_get_request(self) -> Message:
         # send <getToken, random_owner> to all
         owner_id = simulation_state.get_random_agent().id
         to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
 
-        # When receiving the messages
+        # When receiving answers
         def handle_ack_tokens(agent : Agent, msgs : List[Message]):
             # Reset the inner db
             agent.tokens_db = {}
@@ -202,8 +229,8 @@ class Agent:
         # Check that this version is newer - won't happen only if this is an old message
         if token and token.version < new_version:
             # Transfer token to buyer
-            # token.owner = new_owner
-            # token.version = new_version
+            token.owner = new_owner
+            token.version = new_version
             return Message(MessageType.ACK_PAY, self.id, msg_in.sender_id, (token_id, token.version))
 
     def server_handle_get_tokens(self, msg_in: Message):
