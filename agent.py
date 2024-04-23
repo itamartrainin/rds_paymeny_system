@@ -68,10 +68,9 @@ class Agent:
                 # If enough messages where received run the function and remove the upon
                 if len(msgs) == upon_amount:
                     self.upon_registry.remove(upon)
-                    return func_to_run(msgs)
+                    return func_to_run(self, msgs)
 
         # For now, don't handle random messages
-        return
         if self.role == AgentRole.CLIENT:
             return self.client_handle_incoming(msg_in)
         elif self.role == AgentRole.SERVER:
@@ -122,9 +121,8 @@ class Agent:
     #################
 
     def client_handle_incoming(self, msg_in):
-        # Perform client/server logic based on incoming messages
-        # Return new messages based on that logic.
-        raise NotImplementedError('client message handling')
+        # Clients currently don't need to handle messages outside of "upons"
+        return None
         
     def transform_to_server(self):
         raise NotImplementedError('transform_to_server')
@@ -138,35 +136,77 @@ class Agent:
         if action_type == MessageType.PAY and (len(self.my_tokens) > 0):
             return self.create_pay()
         elif action_type == MessageType.GET_TOKENS:
-            return self.create_get_tokens()
+            return self.run_get_request()
         else:
             return None
-        
+    
     def create_pay(self) -> Message:
         # Choose a random token to send and a random owner to receive
         token_to_sell = random.choice(self.my_tokens)
         buyer_id = simulation_state.get_random_agent().id
-        return Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version))
+        return Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
 
-    def create_get_tokens(self) -> Message:
-        # Choose a random owner to query about
+    def run_get_request(self) -> Message:
+        # send <getToken, random_owner> to all
         owner_id = simulation_state.get_random_agent().id
-        return Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, (owner_id))
+        to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
+
+        # When receiving the messages
+        def handle_ack_tokens(agent : Agent, msgs : List[Message]):
+            # Reset the inner db
+            agent.tokens_db = {}
+            for msg in msgs:
+                tokens_list = msg.content
+                for token in tokens_list:
+                    # If we already have this token, update it if the version is higher
+                    if token.id in agent.tokens_db:
+                        if token.version > agent.tokens_db[token.id].version:
+                            agent.tokens_db[token.id] = token
+                    else:
+                        agent.tokens_db[token.id] = token
+
+            # Filter tokens by owner_id
+            owner_tokens = [(token_id, token) for token_id, token in agent.tokens_db.items() if token.owner == owner_id]
+            # Now the db is updated and owner_tokens holds all tokens belonging to the requested owner - what are we supposed to do?
+            # TODO: understand this
+            print("Managed to collect get for " + owner_id)
+            print(owner_tokens)
+
+            # Unlock action-doing
+            agent.during_action = False
+
+        # Register the function to handle the incoming messages
+        self.register_upon(handle_ack_tokens, 
+                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount())
+        
+        # Lock action-doing
+        self.during_action = True
+
+        return to_send
 
     #################
     # Server Logics #
     #################
 
-    def server_handle_incoming(self, msg_in):
-        # Perform client/server logic based on incoming messages
-        # Return new messages based on that logic.
-        raise NotImplementedError('server message handling')
-        
-    def transform_to_client(self):
-        raise NotImplementedError('server transforming')
+    def server_handle_incoming(self, msg_in: Message):
+        if msg_in.type == MessageType.PAY:
+            return self.server_handle_pay(msg_in)
+        elif msg_in.type == MessageType.GET_TOKENS:
+            return self.server_handle_get_tokens(msg_in)
 
-    def server_handle_pay(self, msg : Message):
-        raise NotImplementedError('server handle pay')
-    
-    def server_handle_get_tokens(self, msg : Message):
-        raise NotImplementedError('server handle get tokens')
+    def server_handle_pay(self, msg_in: Message):
+        # Message looks like this: <pay, token_id, new_owner, new_version>
+        token_id, new_owner, new_version = msg_in.content
+        token = self.tokens_db[token_id]
+
+        # Check that this version is newer - won't happen only if this is an old message
+        if token and token.version < new_version:
+            # Transfer token to buyer
+            # token.owner = new_owner
+            # token.version = new_version
+            return Message(MessageType.ACK_PAY, self.id, msg_in.sender_id, (token_id, token.version))
+
+    def server_handle_get_tokens(self, msg_in: Message):
+        # Send all of the tokens as a list
+        return Message(MessageType.ACK_GET_TOKENS, self.id, msg_in.sender_id, (list(self.tokens_db.values())))
+
