@@ -1,6 +1,14 @@
 import random
 import interfaces
 
+# Configs
+NUM_START_CLIENTS = 6
+NUM_START_SERVERS = 7
+NUM_TOKENS_PER_CLIENT = 10
+MAX_MESSAGES_PER_STEP = 5
+NUM_TOTAL_TOKENS = NUM_START_CLIENTS * NUM_TOKENS_PER_CLIENT
+
+# Ongoing State
 agents = {}
 servers = {}
 clients = {}

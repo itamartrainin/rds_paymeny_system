@@ -9,14 +9,7 @@ from agent import Agent
 
 class Simulator:
 
-    def __init__(self, num_start_clients, num_start_servers, total_tokens, num_tokens_per_client, max_messages_per_step):
-        self.total_tokens = total_tokens
-        self.num_tokens_per_client = num_tokens_per_client
-
-        self.num_start_clients = num_start_clients
-        self.num_start_servers = num_start_servers
-        self.max_messages_per_step = max_messages_per_step
-
+    def __init__(self):
         self.tokens = {}
         simulation_state.agents = {}
         self.msgs_queue = []
@@ -30,18 +23,18 @@ class Simulator:
 
     def generate_tokens(self):
         self.tokens = {}
-        for _ in range(self.total_tokens):
+        for _ in range(simulation_state.NUM_TOTAL_TOKENS):
             t = Token()
             self.tokens[t.id] = t
 
     def init_agents(self):
-        for i in range(self.num_start_clients + self.num_start_servers):
-            if i >= self.num_start_clients:
+        for i in range(simulation_state.NUM_START_CLIENTS + simulation_state.NUM_START_SERVERS):
+            if i >= simulation_state.NUM_START_CLIENTS:
                 agent_role = AgentRole.SERVER
                 agent = Agent(agent_role)
                 simulation_state.servers[agent.id] = agent
                 # Make some servers faulty
-                if simulation_state.faulty_counter < self.num_start_servers / 2:
+                if simulation_state.faulty_counter < simulation_state.NUM_START_SERVERS / 2:
                     # agent.set_omission_rate(0.8)
                     # agent.is_faulty = True
                     simulation_state.faulty_counter += 1
@@ -57,7 +50,7 @@ class Simulator:
         token_list_copy = copy.copy(list(self.tokens.values()))
         for client in simulation_state.get_all_clients():            
             # Randomly select 10 unique tokens for the client
-            tokens_to_assign = random.sample(token_list_copy, self.num_tokens_per_client)
+            tokens_to_assign = random.sample(token_list_copy, simulation_state.NUM_TOKENS_PER_CLIENT)
 
             # Assign them to the client, removing from the list
             for token in tokens_to_assign:
@@ -100,7 +93,7 @@ class Simulator:
 
         # Randomly select which messages to send in this step
         for msg in self.msgs_queue:
-            if len(to_deliver) < self.max_messages_per_step:
+            if len(to_deliver) < simulation_state.MAX_MESSAGES_PER_STEP:
                 self.msgs_queue.remove(msg)
                 to_deliver.append(msg)
 
