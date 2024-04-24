@@ -55,7 +55,6 @@ class Simulator:
             # Assign them to the client, removing from the list
             for token in tokens_to_assign:
                 token.owner = client.id
-                client.my_tokens.append(token)
                 token_list_copy.remove(token)
 
     def step(self):

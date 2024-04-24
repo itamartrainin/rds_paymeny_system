@@ -129,7 +129,9 @@ class Agent:
 
     def client_create_action(self) -> Optional[Message]:
         ACTIONS = [[MessageType.PAY, MessageType.GET_TOKENS, None], 
-                    [0.1,             0.2,                    0.7]]
+                    [simulation_state.CLIENT_PAY_RATE, 
+                     simulation_state.CLIENT_GET_RATE, 
+                     simulation_state.CLIENT_NONE_RATE]]
     
         action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0]
         
@@ -150,7 +152,8 @@ class Agent:
         def handle_ack_pay(agent : Agent, msgs : List[Message]):
             print(self.id + " Sold the token ", token_to_sell.id, " to ", buyer_id)
 
-            # Do the transfer of the token 
+            # Update the version of the token then do the transfer
+            token_to_sell.version += 1 
             self.my_tokens.remove(token_to_sell)
             simulation_state.agents[buyer_id].my_tokens.append(token_to_sell)
 
