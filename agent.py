@@ -7,7 +7,7 @@ from interfaces import AgentRole, Message, MessageType, Token
 import simulation_state
 
 class Agent:
-    def __init__(self, role : AgentRole, omission_rate = 0):
+    def __init__(self, role: AgentRole, omission_rate = 0):
         self.omission_rate = float(omission_rate)
         self.transform_rate = 0
         self.tokens_db = None
