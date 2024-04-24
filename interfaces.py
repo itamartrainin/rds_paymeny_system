@@ -18,9 +18,11 @@ class Token:
 class MessageType(Enum):
     PAY = 1
     ACK_PAY = 2
-    GET_TOKENS = 3
-    ACK_GET_TOKENS = 4
-    OK = 5
+    DB_UPDATE = 3
+    GET_TOKENS = 4
+    ACK_GET_TOKENS = 5
+    ACK_DB_UPDATE = 6
+    OK = 7
 
 class Message:
     BROADCAST_SERVER = 1

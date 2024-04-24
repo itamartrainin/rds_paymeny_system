@@ -12,7 +12,7 @@ CLIENT_GET_RATE = 0
 CLIENT_PAY_RATE = 0.3
 CLIENT_NONE_RATE = 1 - CLIENT_PAY_RATE - CLIENT_GET_RATE
 
-AMOUNT_OF_STEPS = 1000
+AMOUNT_OF_STEPS = 100000
 
 
 # Ongoing State
@@ -31,6 +31,11 @@ def get_n_minus_t_amount():
     n = get_servers_amount()
     f = n // 2
     return n-f
+
+def get_t_plus_one():
+    n = get_servers_amount()
+    f = n // 2
+    return f+1
 
 def get_random_server():
     # Choose a random server from the servers list

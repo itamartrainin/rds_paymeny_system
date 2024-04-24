@@ -7,9 +7,9 @@ from interfaces import AgentRole, Message, MessageType, Token
 import simulation_state
 
 class Agent:
-    def __init__(self, role: AgentRole, omission_rate = 0):
+    def __init__(self, role: AgentRole, omission_rate=0, transform_rate=0.5):
         self.omission_rate = float(omission_rate)
-        self.transform_rate = 0
+        self.transform_rate = transform_rate
         self.tokens_db = None
         self.my_tokens = []
         self.role = role
@@ -39,7 +39,7 @@ class Agent:
     def step(self, msg_in) -> Optional[Message]:
         def omission_msg(omission_rate = self.omission_rate):    
             # Drop messages according to the omission rate
-            return random.random() < omission_rate
+            return self.is_faulty and (random.random() < omission_rate)
         
         msg_out = None
 
@@ -81,7 +81,9 @@ class Agent:
         if (self.role == AgentRole.CLIENT and simulation_state.can_add_server()) or \
             (self.role == AgentRole.SERVER and simulation_state.can_remove_server()):
             # Randomly decide
-            return random.random() < self.transform_rate
+            rand_choice = random.random()
+            return rand_choice < self.transform_rate
+        return False
 
     def transform(self) -> Message:
         # Run the specific logic of the role
@@ -89,13 +91,8 @@ class Agent:
             out_msg = self.transform_to_server()
         elif self.role == AgentRole.SERVER:
             out_msg = self.transform_to_client()
-
-        # These actions should only happen after transform is finished
-        # # Update the simulation state
-        # simulation_state.update_lists(self)
-
-        # # Change the role
-        # self.role = AgentRole.SERVER if self.role == AgentRole.CLIENT else AgentRole.CLIENT
+        else:
+            out_msg = None
 
         return out_msg
 
@@ -103,13 +100,6 @@ class Agent:
     def register_upon(self, func_to_run, upon_filter, upon_amount):
         self.upon_registry.append((func_to_run, upon_filter, upon_amount, []))    
 
-    def decide_is_faulty(self):
-        max_faulty = int(len(simulation_state.servers)/2)
-        if len(simulation_state.faulty) < max_faulty:
-            simulation_state.faulty.append(self.id)
-            return True
-        return False
-    
     def give_token(self, token: Token):
         self.my_tokens.append(token)
 
@@ -125,7 +115,53 @@ class Agent:
         return None
         
     def transform_to_server(self):
-        raise NotImplementedError('transform_to_server')
+        to_send = self.run_get_request()
+
+        del simulation_state.clients[self.id]
+        simulation_state.servers[self.id] = self
+        self.role = AgentRole.SERVER
+        print(f'Agent "{self.id}" has change role to SERVER.')
+
+        if simulation_state.faulty_counter < len(simulation_state.servers)/2:
+            # agent.set_omission_rate(0.8)
+            self.is_faulty = True
+            simulation_state.faulty_counter += 1
+
+        return to_send
+
+    def transform_to_client(self):
+        # Transform only if there are less faulty servers than required or self is a faulty server
+        if self.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
+            print('Server transformation to client was initiated.')
+            to_send = self.run_db_update_request()
+            return to_send
+        else:
+            return None
+
+
+    def run_db_update_request(self) -> Message:
+        # Send my db to all others and ask them to update their own based on my db
+        # send <dbUpdate, my_db> to all
+        to_send = Message(MessageType.DB_UPDATE, self.id, Message.BROADCAST_SERVER, (list(self.tokens_db.values())))
+
+        # When receiving answers
+        def handle_ack_db_update(agent: Agent, msgs: List[Message]):
+            del simulation_state.servers[self.id]
+            simulation_state.clients[self.id] = self
+            self.role = AgentRole.CLIENT
+            print(f'Agent "{self.id}" has change role to CLIENT.')
+
+            # Unlock action-doing
+            agent.during_action = False
+
+        # Register the function to handle the incoming messages
+        self.register_upon(handle_ack_db_update,
+                           lambda msg: msg.type == MessageType.ACK_DB_UPDATE, simulation_state.get_t_plus_one())
+
+        # Lock action-doing
+        self.during_action = True
+
+        return to_send
 
     def client_create_action(self) -> Optional[Message]:
         ACTIONS = [[MessageType.PAY, MessageType.GET_TOKENS, None], 
@@ -223,6 +259,8 @@ class Agent:
             return self.server_handle_pay(msg_in)
         elif msg_in.type == MessageType.GET_TOKENS:
             return self.server_handle_get_tokens(msg_in)
+        elif msg_in.type == MessageType.DB_UPDATE:
+            return self.server_handle_db_update(msg_in)
 
     def server_handle_pay(self, msg_in: Message):
         # Message looks like this: <pay, token_id, new_owner, new_version>
@@ -239,4 +277,17 @@ class Agent:
     def server_handle_get_tokens(self, msg_in: Message):
         # Send all of the tokens as a list
         return Message(MessageType.ACK_GET_TOKENS, self.id, msg_in.sender_id, (list(self.tokens_db.values())))
+
+    def server_handle_db_update(self, msg_in: Message):
+        # Update local DB based on version then ACK back.
+        tokens_list = msg_in.content
+        for token in tokens_list:
+            # If we already have this token, update it if the version is higher
+            if token.id in self.tokens_db:
+                if token.version > self.tokens_db[token.id].version:
+                    self.tokens_db[token.id] = token
+            else:
+                self.tokens_db[token.id] = token
+
+        return Message(MessageType.ACK_DB_UPDATE, self.id, msg_in.sender_id, ())
 

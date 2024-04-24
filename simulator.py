@@ -36,7 +36,7 @@ class Simulator:
                 # Make some servers faulty
                 if simulation_state.faulty_counter < simulation_state.NUM_START_SERVERS / 2:
                     # agent.set_omission_rate(0.8)
-                    # agent.is_faulty = True
+                    agent.is_faulty = True
                     simulation_state.faulty_counter += 1
             else:
                 agent_role = AgentRole.CLIENT
