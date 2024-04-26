@@ -8,15 +8,17 @@ NUM_TOKENS_PER_CLIENT = 10
 MAX_MESSAGES_PER_STEP = 5
 NUM_TOTAL_TOKENS = NUM_START_CLIENTS * NUM_TOKENS_PER_CLIENT
 
-CLIENT_GET_RATE = 0
+CLIENT_GET_RATE = 0     # 0 -> GET CANNOT HAPPEN RANDOMLY, ONLY AS PART OF PAY.
 CLIENT_PAY_RATE = 0.3
 CLIENT_NONE_RATE = 1 - CLIENT_PAY_RATE - CLIENT_GET_RATE
 
+
+# ALLOW_FAULTY = True
+# CLIENT_FAULTY_RATE = 0 # 0.1
 CLIENT_OMISSION_RATE = 0 # 0.3
-FAULTY_OMISSION_RATE = 0 # 0.8
+SERVER_OMISSION_RATE = 0 # 0.8
 
-AMOUNT_OF_STEPS = 100000
-
+TRANSFORM_RATE = 0 # 0.5
 
 # Ongoing State
 agents = {}
@@ -39,6 +41,12 @@ def get_t_plus_one():
     n = get_servers_amount()
     f = n // 2
     return f+1
+
+def get_agent_role_by_id(id):
+    if id in servers:
+        return interfaces.AgentRole.SERVER
+    else:
+        return interfaces.AgentRole.CLIENT
 
 def get_random_server():
     # Choose a random server from the servers list
