@@ -219,8 +219,8 @@ class Agent:
         
         # When receiving answers, remove the sold token from the list
         def handle_ack_pay(agent : Agent, msgs : List[Message]):
-            # print(self.id + " Sold the token ", token_to_sell.id, " to ", buyer_id)
-            print(f'~~~PAY--ENDED~~~ :: [...{str(agent.id)[-4:]}]')
+            print(f'~~~PAY//ENDED~~~ :: [...{str(agent.id)[-4:]}]')
+            print(f'$$$TOKEN-SELL$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
 
             # Update the version of the token then do the transfer
             token_to_sell.version += 1 
@@ -254,7 +254,7 @@ class Agent:
 
         # When receiving answers
         def handle_ack_tokens(agent : Agent, msgs : List[Message]):
-            print(f'~~~GET--ENDED~~~ :: [...{str(agent.id)[-4:]}]')
+            print(f'~~~GET//ENDED~~~ :: [...{str(agent.id)[-4:]}]')
 
             # Reset the inner db
             agent.tokens_db = {}
@@ -310,7 +310,7 @@ class Agent:
         token = self.tokens_db[token_id]
 
         # Check that this version is newer - won't happen only if this is an old message
-        if token and token.version < new_version:
+        if token is not None and token.version < new_version:
             # Transfer token to buyer
             token.owner = new_owner
             token.version = new_version
