@@ -123,21 +123,11 @@ class Agent:
         print(f'Agent "{self.id}" has change role to SERVER.')
 
         if simulation_state.faulty_counter < len(simulation_state.servers)/2:
-            # agent.set_omission_rate(0.8)
+            agent.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
             self.is_faulty = True
             simulation_state.faulty_counter += 1
 
         return to_send
-
-    def transform_to_client(self):
-        # Transform only if there are less faulty servers than required or self is a faulty server
-        if self.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
-            print('Server transformation to client was initiated.')
-            to_send = self.run_db_update_request()
-            return to_send
-        else:
-            return None
-
 
     def run_db_update_request(self) -> Message:
         # Send my db to all others and ask them to update their own based on my db
@@ -291,3 +281,11 @@ class Agent:
 
         return Message(MessageType.ACK_DB_UPDATE, self.id, msg_in.sender_id, ())
 
+    def transform_to_client(self):
+        # Transform only if there are less faulty servers than required or self is a faulty server
+        if self.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
+            print('Server transformation to client was initiated.')
+            to_send = self.run_db_update_request()
+            return to_send
+        else:
+            return None

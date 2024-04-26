@@ -35,13 +35,14 @@ class Simulator:
                 simulation_state.servers[agent.id] = agent
                 # Make some servers faulty
                 if simulation_state.faulty_counter < simulation_state.NUM_START_SERVERS / 2:
-                    # agent.set_omission_rate(0.8)
+                    agent.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
                     agent.is_faulty = True
                     simulation_state.faulty_counter += 1
             else:
                 agent_role = AgentRole.CLIENT
                 agent = Agent(agent_role)
                 simulation_state.clients[agent.id] = agent
+                agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
             simulation_state.agents[agent.id] = agent
 
