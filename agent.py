@@ -216,11 +216,14 @@ class Agent:
         token_to_sell = random.choice(self.my_tokens)
         buyer_id = simulation_state.get_random_agent().id
         to_send = Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
-        
+
+        print(f'~~PAY//STARTED~~ :: [...{str(self.id)[-4:]}]')
+        print(f'$$$TOKEN-SUGG$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] / Version: {token_to_sell.version} :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
+
         # When receiving answers, remove the sold token from the list
         def handle_ack_pay(agent : Agent, msgs : List[Message]):
             print(f'~~~PAY//ENDED~~~ :: [...{str(agent.id)[-4:]}]')
-            print(f'$$$TOKEN-SELL$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
+            print(f'$$$TOKEN-SOLD$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] / Version: {token_to_sell.version} :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
 
             # Update the version of the token then do the transfer
             token_to_sell.version += 1 
