@@ -64,15 +64,9 @@ class Agent:
             # Agent decides to omit outgoing message
             msg_out = None
 
-        if msg_out is not None:
-            print(f'<=====SENT=====> :: {msg_out.type} :: {self.role} [...{str(self.id)[-4:]}] --> {simulation_state.get_agent_role_by_id(msg_out.receiver_id)} [...{str(msg_out.receiver_id)[-4:]}]')
-
         return msg_out
 
     def handle_incoming(self, msg_in):
-        if msg_in is not None:
-            print(f'===>RECEIVED<=== :: {msg_in.type} :: {simulation_state.get_agent_role_by_id(msg_in.sender_id)} [...{str(msg_in.sender_id)[-4:]}] --> {self.role} [...{str(self.id)[-4:]}]')
-
         # Check if we are waiting for this type of message:
         for upon in self.upon_registry:
             func_to_run, upon_filter, upon_amount, msgs = upon
@@ -85,7 +79,7 @@ class Agent:
                     msg = func_to_run(self, msgs)
                     return msg
 
-        # For now, don't handle random messages
+        # Messages we didn't specifically wait for
         if self.role == AgentRole.CLIENT:
             return self.client_handle_incoming(msg_in)
         elif self.role == AgentRole.SERVER:
@@ -97,7 +91,10 @@ class Agent:
             (self.role == AgentRole.SERVER and simulation_state.can_remove_server()):
             # Randomly decide
             rand_choice = random.random()
-            return rand_choice < simulation_state.TRANSFORM_RATE
+            if self.role == AgentRole.CLIENT:
+                return rand_choice < simulation_state.CLIENT_TRANSFORM_RATE
+            elif self.role == AgentRole.SERVER:
+                return rand_choice < simulation_state.SERVER_TRANSFORM_RATE
         return False
 
     def transform(self) -> Message:
@@ -106,10 +103,8 @@ class Agent:
             out_msg = self.transform_to_server()
         elif self.role == AgentRole.SERVER:
             out_msg = self.transform_to_client()
-        else:
-            out_msg = None
 
-        return out_msg
+        return out_msg or None
 
     # Register a function to run when receiving an amount of messages of the same type
     def register_upon(self, func_to_run, upon_filter, upon_amount):
@@ -131,20 +126,47 @@ class Agent:
         
     def transform_to_server(self):
         print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~INITIATED~ :: CLIENT --> SERVER.')
-        to_send = self.run_get_request()
+        # Agent sends a getToken request to update the db, and upon finishing the agent transforms
 
-        del simulation_state.clients[self.id]
-        simulation_state.servers[self.id] = self
-        self.role = AgentRole.SERVER
-        print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~DONE~ :: CLIENT --> SERVER.')
+        # send <getToken, > to all
+        owner_id = ""
+        to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
 
-        # if simulation_state.ALLOW_FAULTY and simulation_state.faulty_counter < len(simulation_state.servers)/2:
-        #     self.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
-        #     simulation_state.faulty_counter += 1
+        # When receiving answers
+        def handle_transform_get(agent : Agent, msgs : List[Message]):
+            # Reset the inner db
+            agent.tokens_db = {}
+            for msg in msgs:
+                tokens_list = msg.content
+                for token in tokens_list:
+                    # If we already have this token, update it if the version is higher
+                    if token.id in agent.tokens_db:
+                        if token.version > agent.tokens_db[token.id].version:
+                            agent.tokens_db[token.id] = token
+                    else:
+                        agent.tokens_db[token.id] = token
 
-        if self.is_faulty:
-            self.set_omission_rate(simulation_state.SERVER_OMISSION_RATE)
-            simulation_state.faulty_counter += 1
+            # Unlock action-doing
+            agent.during_action = False
+
+            # Turn into a server
+            del simulation_state.clients[self.id]
+            simulation_state.servers[self.id] = self
+            self.role = AgentRole.SERVER
+            print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~DONE~ :: CLIENT --> SERVER.')
+
+            if simulation_state.ALLOW_FAULTY and simulation_state.faulty_counter < len(simulation_state.servers)/2:
+                self.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
+                simulation_state.faulty_counter += 1
+
+            return None
+
+        # Register the function to handle the incoming messages
+        self.register_upon(handle_transform_get, 
+                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount())
+        
+        # Lock action-doing
+        self.during_action = True
 
         return to_send
 
@@ -186,16 +208,8 @@ class Agent:
 
     def client_create_action(self) -> Optional[Message]:
         ACTIONS = [
-            [
-                MessageType.PAY,
-                MessageType.GET_TOKENS,
-                None
-            ],
-            [
-                simulation_state.CLIENT_PAY_RATE,
-                simulation_state.CLIENT_GET_RATE,
-                simulation_state.CLIENT_NONE_RATE
-            ]
+            [MessageType.PAY, MessageType.GET_TOKENS, None], 
+            [simulation_state.CLIENT_PAY_RATE, simulation_state.CLIENT_GET_RATE, simulation_state.CLIENT_NONE_RATE]
         ]
     
         action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0]

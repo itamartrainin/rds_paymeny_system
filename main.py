@@ -5,26 +5,31 @@ from simulator import Simulator
 import simulation_state
 
 
-def run_simulation_test(total_steps, stop_comm_after_steps):
+def run_simulation_test():
     sim = Simulator()
 
+    # Print starting state
     print("Start:")
-    for agent in simulation_state.get_all_agents():
-        print(f"Agent: {agent.id}")
-        print(f"Tokens: {agent.my_tokens}")
+    print_summary()
 
-    for step in range(total_steps):
+    # Run steps until close
+    for step in range(STEPS_UNTIL_CLOSE):
         print(f'--------- Step #{step + 1} ---------')
-        # print('\n'.join(str(msg) for msg in sim.msgs_queue))
-
-        if step == stop_comm_after_steps:
-            print('==>==>==>==>==> COMMUNICATIONS CLOSED <==<==<==<==<==')
-            sim.close()
-
         sim.step()
 
-        # print_step_summary()
+    # Call close
+    print('==>==>==>==>==> CALLED CLOSED - NO MORE NEW ACTIONS <==<==<==<==<==')
+    sim.close()
 
+    # Run steps until finish
+    step = STEPS_UNTIL_CLOSE + 1
+    while sim.msgs_queue:
+        step += 1
+        print(f'--------- Step #{step} ---------')
+        sim.step()
+
+    # Print final state
+    print("End:")
     print_summary()
 
 def compute_final_db():
@@ -58,19 +63,18 @@ def check_liveness():
         else:
             if client.during_action:
                 any_not_liveness = True
-                print(f'Client ...{client.id[-4:]} did NOT finished all executions --> LIVENESS NOT HOLDS')
+                print(f'Client ...{client.id[-4:]} did NOT finished all executions --> LIVENESS DOESN\'T HOLD')
             else:
                 print(f'Client ...{client.id[-4:]} finished all executions ----------> LIVENESS HOLDS')
 
     if any_not_liveness:
-        print('\n====> LIVENESS Property does NOT hold... :(\n')
+        print('\n====> LIVENESS Property DOESN\'T HOLD... :(\n')
     else:
-        print('\n====> LIVENESS Property does HOLDS. :)\n')
+        print('\n====> LIVENESS Property HOLDS. :)\n')
 
 
 NUM_SIMULATIONS = 1
-TOTAL_STEPS = 1000
-STOP_COMM_AFTER_STEPS = TOTAL_STEPS/2
+STEPS_UNTIL_CLOSE = 200
 
 for sim_counter in range(NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
@@ -83,9 +87,9 @@ for sim_counter in range(NUM_SIMULATIONS):
     simulation_state.CLIENT_PAY_RATE = 0.5
     simulation_state.CLIENT_OMISSION_RATE = 0  # 0.3
     simulation_state.FAULTY_OMISSION_RATE = 0  # 0.8
-    simulation_state.TRANSFORM_RATE = 0.5
+    simulation_state.TRANSFORM_RATE = 0.2
 
-    final_db_omissions = run_simulation_test(TOTAL_STEPS, STOP_COMM_AFTER_STEPS)
+    final_db_omissions = run_simulation_test()
 
     # Liveness and Safety Checks
     check_liveness()
