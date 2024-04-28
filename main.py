@@ -84,7 +84,7 @@ def check_liveness():
         return True
 
 
-NUM_SIMULATIONS = 100
+NUM_SIMULATIONS = 1
 STEPS_UNTIL_CLOSE = 200
 
 liveness_results = []

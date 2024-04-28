@@ -283,6 +283,7 @@ class Agent:
             if part_of_pay_request:
                 msg_out = self.run_pay_request()
                 self.last_action_msg = msg_out
+                return msg_out
 
             # Unlock action-doing
             agent.during_action = False
