@@ -8,25 +8,27 @@ import simulation_state
 
 def run_simulation_test():
     sim = Simulator()
+    simulation_state.step_counter = 0
 
     # Print starting state
     print("Start:")
     print_summary()
 
     # Run steps until close
-    for _ in range(STEPS_UNTIL_CLOSE):
+    for _ in range(simulation_state.STEPS_UNTIL_CLOSE):
         simulation_state.step_counter += 1
         print(f'--------- Step #{simulation_state.step_counter + 1} ---------')
         sim.step()
 
     # Call close
-    print('==>==>==>==>==> CALLED CLOSED - NO MORE NEW ACTIONS <==<==<==<==<==')
-    sim.close()
+    if not simulation_state.LOG_RUN:
+        print('==>==>==>==>==> CALLED CLOSED - NO MORE NEW ACTIONS <==<==<==<==<==')
+        sim.close()
 
     # Run steps until finish
     while sim.msgs_queue or (simulation_state.LOG_RUN and len(simulation_state.action_log) > 0):
         simulation_state.step_counter += 1
-        if simulation_state.step_counter > 100000000:
+        if simulation_state.step_counter > simulation_state.STEPS_UNTIL_INFTY_LOOP:
             print('Infinite loop detected. Exiting...')
             break
         print(f'--------- Step #{simulation_state.step_counter + 1} ---------')
@@ -70,7 +72,7 @@ def check_safety(token_db_1, token_db_2):
             print('Safety DOESN\'T hold... :( :: Owner Missmatch')
             return False
 
-    print('Safety HOLS!!! :)')
+    print('Safety HOLDS!!! :)')
     return True
 
 def print_step_summary():
@@ -129,13 +131,9 @@ def check_liveness():
         return True
 
 
-NUM_SIMULATIONS = 1
-STEPS_UNTIL_CLOSE = 200
-
-
 liveness_results = []
 safety_results = []
-for sim_counter in range(NUM_SIMULATIONS):
+for sim_counter in range(simulation_state.NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
 
     """
