@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 
 from interfaces import AgentRole, MessageType
 from simulator import Simulator
@@ -25,7 +26,7 @@ def run_simulation_test():
     # Run steps until finish
     while sim.msgs_queue or (simulation_state.LOG_RUN and len(simulation_state.action_log) > 0):
         simulation_state.step_counter += 1
-        if simulation_state.step_counter > 100000:
+        if simulation_state.step_counter > 100000000:
             print('Infinite loop detected. Exiting...')
             break
         print(f'--------- Step #{simulation_state.step_counter + 1} ---------')
@@ -45,24 +46,27 @@ def compute_final_db():
     for server in simulation_state.servers.values():
         for token_id, token in server.tokens_db.items():
             if token_id not in final_db:
-                final_db[token_id] = token
+                final_db[token_id] = copy.deepcopy(token)
             elif token.version > final_db[token_id].version:
-                final_db[token_id] = token
+                final_db[token_id] = copy.deepcopy(token)
     return final_db
 
 def check_safety(token_db_1, token_db_2):
     if len(token_db_1) != len(token_db_2):
         print('Safety DOESN\'T hold... :( :: Not Same Length.')
         return False
+    elif set(token_db_1.keys()) != set(token_db_2.keys()):
+        print('Safety DOESN\'T hold... :( :: Not equal token lists.')
+        return False
 
     for token_id in token_db_1.keys():
-        if token_db_1[token_id].id != token_db_1[token_id].id:
+        if token_db_1[token_id].id != token_db_2[token_id].id:
             print('Safety DOESN\'T hold... :( :: ID Missmatch')
             return False
-        elif token_db_1[token_id].version != token_db_1[token_id].version:
+        elif token_db_1[token_id].version != token_db_2[token_id].version:
             print('Safety DOESN\'T hold... :( ::  Version Missmatch')
             return False
-        elif token_db_1[token_id].owner != token_db_1[token_id].owner:
+        elif token_db_1[token_id].owner != token_db_2[token_id].owner:
             print('Safety DOESN\'T hold... :( :: Owner Missmatch')
             return False
 
@@ -178,7 +182,7 @@ for sim_counter in range(NUM_SIMULATIONS):
 
 
 print()
-print('-'*200)
+print('-'*100)
 print()
 
 if all(liveness_results):
