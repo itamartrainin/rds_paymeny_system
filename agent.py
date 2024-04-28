@@ -36,24 +36,26 @@ class Agent:
         for token in list(self.tokens_db.values()):
             if token.owner == self.id:
                 self.my_tokens.append(token)
+    def should_omit_msg(self):
+        # Drop messages according to the omission rate
+        return self.is_faulty and (random.random() < self.omission_rate)
 
     def step(self, msg_in) -> Optional[Message]:
-        def omit_msg(omission_rate = self.omission_rate):
-            # Drop messages according to the omission rate
-            return self.is_faulty and (random.random() < omission_rate)
-
         msg_out = None
 
         # if received a message and it didn't omission - handle it according to the role
-        should_omit_incoming = omit_msg()
-        if msg_in is not None and not should_omit_incoming:
-            # Agent decided not to omit incoming message.
-            should_omit_outgoing = omit_msg()
-            if should_omit_outgoing:
-                # Agent decides to omit outgoing message
+        if msg_in is not None:
+            should_omit_incoming = self.should_omit_msg()
+            if should_omit_incoming:
+                print(f'>OMIT//INCOMING< :: {self.role} :: [...{str(self.id)[-4:]}]')
                 msg_out = None
             else:
                 msg_out = self.handle_incoming(msg_in)
+
+                should_omit_outgoing = self.should_omit_msg()
+                if should_omit_outgoing:
+                    print(f'>OMIT//OUTGOING< :: {self.role} :: [...{str(self.id)[-4:]}]')
+                    msg_out = None
 
         # For simplicity, we ignore sending omission when running a self initiated action
         # If didn't receive a msg we can maybe do an action (if one is not in progress)

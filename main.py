@@ -77,30 +77,34 @@ def check_liveness():
 
     if any_not_liveness:
         print('\n====> LIVENESS Property DOESN\'T HOLD... :(\n')
+        return False
     else:
         print('\n====> LIVENESS Property HOLDS. :)\n')
+        return True
 
 
 NUM_SIMULATIONS = 1
 STEPS_UNTIL_CLOSE = 200
 
+liveness_results = []
 for sim_counter in range(NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
 
     """
     Run with omissions
     """
-    simulation_state.ALLOW_FAULTY = False # TODO: Change to FALSE!!!!!
+    simulation_state.ALLOW_FAULTY = True
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.5
-    simulation_state.CLIENT_OMISSION_RATE = 0  # 0.3
-    simulation_state.FAULTY_OMISSION_RATE = 0  # 0.8
+    simulation_state.CLIENT_OMISSION_RATE = 0.3
+    simulation_state.SERVER_OMISSION_RATE = 0.8
     simulation_state.TRANSFORM_RATE = 0.2
 
     final_db_omissions = run_simulation_test()
 
     # Liveness and Safety Checks
-    check_liveness()
+    liveness = check_liveness()
+    liveness_results.append(liveness)
 
     """
     Run withOUT omissions
@@ -110,7 +114,7 @@ for sim_counter in range(NUM_SIMULATIONS):
     # simulation_state.CLIENT_GET_RATE = 0
     # simulation_state.CLIENT_PAY_RATE = 0.3
     # simulation_state.CLIENT_OMISSION_RATE = 0.3  # 0.3
-    # simulation_state.FAULTY_OMISSION_RATE = 0.8  # 0.8
+    # simulation_state.SERVER_OMISSION_RATE = 0.8  # 0.8
     # simulation_state.TRANSFORM_RATE = 0.5
     #
     # final_db_no_omissions = run_simulation_test(TOTAL_STEPS, STOP_COMM_AFTER_STEPS)
@@ -119,3 +123,7 @@ for sim_counter in range(NUM_SIMULATIONS):
 
     # TODO: Make sure final_db_omissions == final_db_no_omissions
 
+if all(liveness_results):
+    print('Liveness HOLDS for ALL simulations!!! :)')
+else:
+    print('Liveness DOESN\'T hold for some simulations... :(')
