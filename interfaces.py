@@ -1,13 +1,15 @@
 import uuid
 from enum import Enum
 
+import simulation_state
+
 class AgentRole(Enum):
     CLIENT = 1
     SERVER = 2
 
 class Token:
     def __init__(self):
-        self.id = self.generate_id()
+        self.id = simulation_state.IDS.pop()
         self.version = 0
         self.owner = None
 
@@ -19,7 +21,7 @@ class ActionType(Enum):
     PAY_START = 1
     PAY_FINISH = 2
 
-    GET_TOKENS_START = 3 
+    GET_TOKENS_START = 3
     GET_TOKENS_FINISH = 4
 
     CLIENT_TRANSFORM_START = 5

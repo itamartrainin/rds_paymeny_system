@@ -14,7 +14,7 @@ class Agent:
         self.my_tokens = []
         self.role = role
         self.upon_registry = []
-        self.id = self.generate_id()
+        self.id = simulation_state.IDS.pop()
         self.during_action = False
         self.is_faulty = False
 
@@ -23,11 +23,6 @@ class Agent:
         # if is server and omission rate is positive, this is faulty
         if omission_rate > 0:
             self.is_faulty = True
-
-    @staticmethod
-    def generate_id():
-        owner_name = str(uuid.uuid4())
-        return owner_name
 
     def set_tokens_db(self, tokens_db):
         self.tokens_db = tokens_db

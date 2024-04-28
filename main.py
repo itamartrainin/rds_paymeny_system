@@ -99,6 +99,7 @@ def check_liveness():
 NUM_SIMULATIONS = 1
 STEPS_UNTIL_CLOSE = 200
 
+
 liveness_results = []
 for sim_counter in range(NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
@@ -130,7 +131,7 @@ for sim_counter in range(NUM_SIMULATIONS):
     # simulation_state.SERVER_OMISSION_RATE = 0.8  # 0.8
     # simulation_state.TRANSFORM_RATE = 0.5
     #
-    # final_db_no_omissions = run_simulation_test(TOTAL_STEPS, STOP_COMM_AFTER_STEPS)
+    # final_db_no_omissions = run_simulation_test()
     #
     # check_liveness()
 

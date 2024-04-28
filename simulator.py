@@ -14,12 +14,24 @@ class Simulator:
         simulation_state.agents = {}
         self.msgs_queue = []
 
+        self.load_ids()
         self.init_agents()
         self.generate_tokens()
         self.allocate_tokens()
 
+        print('!!AGENTS!!')
+        for agent_id in simulation_state.agents:
+            print(agent_id)
+        print('!!TOKENS!!')
+        for token in self.tokens.values():
+            print(token.id + ' :: ' + str(token.owner))
+
         for agent in simulation_state.get_all_agents():
             agent.set_tokens_db(copy.deepcopy(self.tokens))
+
+    def load_ids(self):
+        with open('ids.txt', 'r') as f:
+            simulation_state.IDS = f.read().strip().split('\n')
 
     def generate_tokens(self):
         self.tokens = {}
@@ -56,9 +68,9 @@ class Simulator:
     def allocate_tokens(self):
         # Create a copy of the tokens list
         token_list_copy = copy.copy(list(self.tokens.values()))
-        for client in simulation_state.get_all_clients():            
-            # Randomly select 10 unique tokens for the client
-            tokens_to_assign = random.sample(token_list_copy, simulation_state.NUM_TOKENS_PER_CLIENT)
+        for i, client in enumerate(simulation_state.get_all_clients()):
+            # Randomly select X unique tokens for the client
+            tokens_to_assign = token_list_copy[i*simulation_state.NUM_TOKENS_PER_CLIENT:(i+1)*simulation_state.NUM_TOKENS_PER_CLIENT]
 
             # Assign them to the client, removing from the list
             for token in tokens_to_assign:
