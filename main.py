@@ -33,6 +33,9 @@ def run_simulation_test():
     print("End:")
     print_summary()
 
+    # Print the log
+    print_action_log()
+
 def compute_final_db():
     # Collect all dbs from servers and combine them to the final DB.
     raise NotImplementedError
@@ -58,6 +61,15 @@ def print_summary():
         elif agent.role == AgentRole.SERVER:
             print(f"Server: {agent.id}")
         print(f"Tokens: {agent.my_tokens}")
+
+def print_action_log():
+    print("\n---------- Action Log ----------")
+    for action in simulation_state.action_log:
+        print(f"Agent: {action[0]}")
+        print(f"Timestamp: {action[2]}")
+        print(f"Action: {action[1]}")
+        print("-----------------------------")
+    print("---------- ---------- ----------\n")
 
 def check_liveness():
     # Liveness holds if the clients finished the execution of all the actions it performed.

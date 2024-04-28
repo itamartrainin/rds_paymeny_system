@@ -15,6 +15,19 @@ class Token:
     def generate_id():
         return str(uuid.uuid4())
 
+class ActionType(Enum):
+    PAY_START = 1
+    PAY_FINISH = 2
+
+    GET_TOKENS_START = 3 
+    GET_TOKENS_FINISH = 4
+
+    CLIENT_TRANSFORM_START = 5
+    CLIENT_TRANSFORM_FINISH = 6
+
+    SERVER_TRANSFORM_START = 7
+    SERVER_TRANSFORM_FINISH = 8
+
 class MessageType(Enum):
     PAY = 1
     ACK_PAY = 2

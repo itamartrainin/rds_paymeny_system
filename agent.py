@@ -4,7 +4,7 @@ from enum import Enum
 import random
 from typing import List, Optional
 import uuid
-from interfaces import AgentRole, Message, MessageType, Token
+from interfaces import ActionType, AgentRole, Message, MessageType, Token
 import simulation_state
 
 class Agent:
@@ -36,9 +36,18 @@ class Agent:
         for token in list(self.tokens_db.values()):
             if token.owner == self.id:
                 self.my_tokens.append(token)
+    
     def should_omit_msg(self):
         # Drop messages according to the omission rate
         return self.is_faulty and (random.random() < self.omission_rate)
+    
+    def log_action(self, action_type, action_msg = None):
+        if simulation_state.WRITE_TO_LOG:
+            simulation_state.action_log.append((self.id, simulation_state.step_counter, action_type, action_msg))
+        elif simulation_state.READ_FROM_LOG:
+            # If we are reading from log, then pop the finish action from it
+            if action_type in [ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
+                simulation_state.action_log.pop()
 
     def step(self, msg_in) -> Optional[Message]:
         msg_out = None
@@ -59,15 +68,23 @@ class Agent:
 
         # For simplicity, we ignore sending omission when running a self initiated action
         # If didn't receive a msg we can maybe do an action (if one is not in progress)
-        # Decide randomly if to transform
-        elif not self.during_action and self.should_transform():
-            msg_out = self.transform()
-            self.last_action_msg = msg_out
+        # If we run from the logs then we maybe pop an action from it
+        elif simulation_state.READ_FROM_LOG:
+            # If the next action is ours then pop it
+            if simulation_state.action_log[0][0] == self.id:
+                _, _, _, action_msg = simulation_state.action_log.pop()
+                msg_out = action_msg
+                self.last_action_msg = msg_out
+        else:            
+            # Decide randomly if to transform
+            if not self.during_action and self.should_transform():
+                msg_out = self.transform()
+                self.last_action_msg = msg_out
 
-        # Decide randomly if to do an action (clients only)
-        elif not self.during_action and self.role == AgentRole.CLIENT:
-            msg_out = self.client_create_action()
-            self.last_action_msg = msg_out
+            # Decide randomly if to do an action (clients only)
+            elif not self.during_action and self.role == AgentRole.CLIENT:
+                msg_out = self.client_create_action()
+                self.last_action_msg = msg_out
 
         return msg_out
 
@@ -148,10 +165,8 @@ class Agent:
     def transform_to_server(self):
         print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~INITIATED~ :: CLIENT --> SERVER.')
         # Agent sends a getToken request to update the db, and upon finishing the agent transforms
-
-        # send <getToken, > to all
-        owner_id = ""
         to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
+        self.log_action(ActionType.CLIENT_TRANSFORM_START, to_send)
 
         # When receiving answers
         def handle_transform_get(agent : Agent, msgs : List[Message]):
@@ -177,6 +192,7 @@ class Agent:
             simulation_state.client_transforming_flag = 0
 
             print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~DONE~ :: CLIENT --> SERVER.')
+            self.log_action(ActionType.CLIENT_TRANSFORM_FINISH)
 
             if simulation_state.ALLOW_FAULTY and simulation_state.faulty_counter < len(simulation_state.servers)/2:
                 self.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
@@ -218,12 +234,14 @@ class Agent:
         token_to_sell = random.choice(self.my_tokens)
         buyer_id = simulation_state.get_random_agent().id
         to_send = Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
-
+        
+        self.log_action(ActionType.PAY_START, to_send)
         print(f'~~PAY//STARTED~~ :: [...{str(self.id)[-4:]}]')
         print(f'$$$TOKEN-SUGG$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] / Version: {token_to_sell.version} :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
 
         # When receiving answers, remove the sold token from the list
         def handle_ack_pay(agent : Agent, msgs : List[Message]):
+            self.log_action(ActionType.PAY_FINISH)
             print(f'~~~PAY//ENDED~~~ :: [...{str(agent.id)[-4:]}]')
             print(f'$$$TOKEN-SOLD$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] / Version: {token_to_sell.version} :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
 
@@ -256,10 +274,12 @@ class Agent:
 
         owner_id = simulation_state.get_random_agent().id
         to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
+        self.log_action(ActionType.GET_TOKENS_START, to_send)
 
         # When receiving answers
         def handle_ack_tokens(agent : Agent, msgs : List[Message]):
             print(f'~~~GET//ENDED~~~ :: [...{str(agent.id)[-4:]}]')
+            self.log_action(ActionType.GET_TOKENS_FINISH)
 
             # Reset the inner db
             agent.tokens_db = {}
@@ -343,6 +363,8 @@ class Agent:
     def transform_to_client(self):
         print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~INITIATED~ :: SERVER --> CLIENT.')
         to_send = self.run_db_update_request()
+        self.log_action(ActionType.SERVER_TRANSFORM_START, to_send)
+
         return to_send
 
     def run_db_update_request(self) -> Message:
@@ -369,6 +391,7 @@ class Agent:
                     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
                 print(f'!TRANSFORMATION! :: [...{str(agent.id)[-4:]}] :: ~DONE~ :: SERVER --> CLIENT.')
+                self.log_action(ActionType.SERVER_TRANSFORM_FINISH)
 
                 # Unlock action-doing
                 agent.during_action = False

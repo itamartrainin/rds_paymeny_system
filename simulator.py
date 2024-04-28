@@ -85,7 +85,7 @@ class Simulator:
                 print(f'<=====SENT=====> :: {action_msg.type} :: {agent.role} [...{str(agent.id)[-4:]}] --> [...{str(action_msg.receiver_id)[-4:]}]')
                 self.add_msg_to_queue(action_msg)
 
-    # Adds msg into the queue.
+    # Adds the msg into the sending queue.
     # If the message is broadcast then we duplicate it for every server
     def add_msg_to_queue(self, msg):
         if msg.receiver_id == Message.BROADCAST_ALL:

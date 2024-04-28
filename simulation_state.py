@@ -33,6 +33,16 @@ amount_transforming_into_clients = 0
 faulty_counter = 0 
 step_counter = 0
 
+# Logs
+LOG_RUN = 0
+READ_FROM_LOG = LOG_RUN
+WRITE_TO_LOG = 1 - READ_FROM_LOG
+
+if LOG_RUN:
+    LOG_POP_RATE = 0.5
+
+action_log = [] # list of actions tuple : (agent_id, step, action)
+
 def get_agents_amount():
     return len(agents.values())
 def get_servers_amount():
