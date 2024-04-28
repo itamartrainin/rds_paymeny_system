@@ -76,13 +76,14 @@ class Simulator:
             response_msg = receiver_agent.step(msg)
             if response_msg is not None:
                 print(f'<=====SENT=====> :: {response_msg.type} :: {receiver_agent.role} [...{str(receiver_agent.id)[-4:]}] --> {simulation_state.get_agent_role_by_id(response_msg.receiver_id)} [...{str(response_msg.receiver_id)[-4:]}]')
-            
-            self.add_msg_to_queue(response_msg) if response_msg is not None else None
+                self.add_msg_to_queue(response_msg)
 
         # No matter the messages, empty step all agents to generate actions
         for agent in simulation_state.get_all_agents():
             action_msg = agent.step(None)
-            self.add_msg_to_queue(action_msg) if action_msg is not None else None
+            if action_msg is not None:
+                print(f'<=====SENT=====> :: {action_msg.type} :: {agent.role} [...{str(agent.id)[-4:]}] --> [...{str(action_msg.receiver_id)[-4:]}]')
+                self.add_msg_to_queue(action_msg)
 
     # Adds msg into the queue.
     # If the message is broadcast then we duplicate it for every server
