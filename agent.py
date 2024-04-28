@@ -74,7 +74,7 @@ class Agent:
                 msgs.append(msg_in)
                 
                 # If enough messages where received run the function and remove the upon
-                if len(msgs) == upon_amount:
+                if len(msgs) >= upon_amount():
                     self.upon_registry.remove(upon)
                     msg = func_to_run(self, msgs)
                     return msg
@@ -92,16 +92,19 @@ class Agent:
             # Randomly decide
             rand_choice = random.random()
             if self.role == AgentRole.CLIENT:
-                return rand_choice < simulation_state.CLIENT_TRANSFORM_RATE
+                return rand_choice < simulation_state.CLIENT_TRANSFORM_RATE and not simulation_state.client_transforming_flag
             elif self.role == AgentRole.SERVER:
-                return rand_choice < simulation_state.SERVER_TRANSFORM_RATE
+                return rand_choice < simulation_state.SERVER_TRANSFORM_RATE and not simulation_state.server_transforming_flag
         return False
 
     def transform(self) -> Message:
+        
         # Run the specific logic of the role
         if self.role == AgentRole.CLIENT:
+            simulation_state.client_transforming_flag = 1
             out_msg = self.transform_to_server()
         elif self.role == AgentRole.SERVER:
+            simulation_state.server_transforming_flag = 1
             out_msg = self.transform_to_client()
 
         return out_msg or None
@@ -121,7 +124,14 @@ class Agent:
     #################
 
     def client_handle_incoming(self, msg_in):
-        # Clients currently don't need to handle messages outside of "upons"
+        # Client can only handle incoming TURNED_TO_CLIENT messages, which trigger a recount of upons
+        if msg_in.type == MessageType.TURNED_TO_CLIENT:
+            for upon in self.upon_registry:
+                func_to_run, _, upon_amount, msgs = upon
+                if len(msgs) >= upon_amount():
+                    self.upon_registry.remove(upon)
+                    return func_to_run(self, msgs)
+
         return None
         
     def transform_to_server(self):
@@ -153,6 +163,8 @@ class Agent:
             del simulation_state.clients[self.id]
             simulation_state.servers[self.id] = self
             self.role = AgentRole.SERVER
+            simulation_state.client_transforming_flag = 0
+
             print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~DONE~ :: CLIENT --> SERVER.')
 
             if simulation_state.ALLOW_FAULTY and simulation_state.faulty_counter < len(simulation_state.servers)/2:
@@ -163,44 +175,8 @@ class Agent:
 
         # Register the function to handle the incoming messages
         self.register_upon(handle_transform_get, 
-                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount())
+                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount)
         
-        # Lock action-doing
-        self.during_action = True
-
-        return to_send
-
-    def run_db_update_request(self) -> Message:
-        # Send my db to all others and ask them to update their own based on my db
-        # send <dbUpdate, my_db> to all
-
-        to_send = Message(MessageType.DB_UPDATE, self.id, Message.BROADCAST_SERVER, (list(self.tokens_db.values())))
-
-        # When receiving answers
-        def handle_ack_db_update(agent: Agent, msgs: List[Message]):
-            # Actual transformation to client logic
-            # Transform only if there are less faulty servers than required or self is a faulty server
-            if agent.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
-                del simulation_state.servers[agent.id]
-                simulation_state.clients[agent.id] = agent
-                agent.role = AgentRole.CLIENT
-
-                # Decide if new client is faulty
-                # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
-                #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
-
-                if self.is_faulty:
-                    agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
-
-                print(f'!TRANSFORMATION! :: [...{str(agent.id)[-4:]}] :: ~DONE~ :: SERVER --> CLIENT.')
-
-            # Unlock action-doing
-            agent.during_action = False
-
-        # Register the function to handle the incoming messages
-        self.register_upon(handle_ack_db_update,
-                           lambda msg: msg.type == MessageType.ACK_DB_UPDATE, simulation_state.get_t_plus_one())
-
         # Lock action-doing
         self.during_action = True
 
@@ -256,7 +232,7 @@ class Agent:
             return token_id == token_to_sell.id and token_version == (token_to_sell.version + 1)
 
         # Register the handling
-        self.register_upon(handle_ack_pay, handle_ack_filter, simulation_state.get_n_minus_t_amount())
+        self.register_upon(handle_ack_pay, handle_ack_filter, simulation_state.get_n_minus_t_amount)
         
         # Lock action-doing
         self.during_action = True
@@ -302,7 +278,7 @@ class Agent:
 
         # Register the function to handle the incoming messages
         self.register_upon(handle_ack_tokens, 
-                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount())
+                        lambda msg: msg.type == MessageType.ACK_GET_TOKENS, simulation_state.get_n_minus_t_amount)
         
         # Lock action-doing
         self.during_action = True
@@ -353,4 +329,44 @@ class Agent:
     def transform_to_client(self):
         print(f'!TRANSFORMATION! :: [...{str(self.id)[-4:]}] :: ~INITIATED~ :: SERVER --> CLIENT.')
         to_send = self.run_db_update_request()
+        return to_send
+
+    def run_db_update_request(self) -> Message:
+        # Send my db to all others and ask them to update their own based on my db
+        # send <dbUpdate, my_db> to all
+
+        to_send = Message(MessageType.DB_UPDATE, self.id, Message.BROADCAST_SERVER, (list(self.tokens_db.values())))
+
+        # When receiving answers
+        def handle_ack_db_update(agent: Agent, msgs: List[Message]):
+            # Actual transformation to client logic
+            # Transform only if there are less faulty servers than required or self is a faulty server
+            if agent.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
+                del simulation_state.servers[agent.id]
+                simulation_state.clients[agent.id] = agent
+                agent.role = AgentRole.CLIENT
+                simulation_state.server_transforming_flag = 0
+
+                # Decide if new client is faulty
+                # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
+                #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
+
+                if self.is_faulty:
+                    agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
+
+                print(f'!TRANSFORMATION! :: [...{str(agent.id)[-4:]}] :: ~DONE~ :: SERVER --> CLIENT.')
+
+                # Unlock action-doing
+                agent.during_action = False
+
+                # Send a message to all clients to announce change
+                return Message(MessageType.TURNED_TO_CLIENT, agent.id, Message.BROADCAST_CLIENT, ())
+
+        # Register the function to handle the incoming messages
+        self.register_upon(handle_ack_db_update,
+                           lambda msg: msg.type == MessageType.ACK_DB_UPDATE, simulation_state.get_t_plus_one)
+
+        # Lock action-doing
+        self.during_action = True
+
         return to_send

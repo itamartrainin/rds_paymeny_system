@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from interfaces import MessageType
+from interfaces import AgentRole, MessageType
 from simulator import Simulator
 import simulation_state
 
@@ -47,8 +47,15 @@ def print_step_summary():
 
 def print_summary():
     print("\n---------- SUMMARY ----------")
+    print(f"Num Servers: {len(simulation_state.servers)}")
+    print(f"Num Clients: {len(simulation_state.clients)}")
+    print(f"Faulty: {simulation_state.faulty_counter}")
+    print("---------- ---------- ----------\n")
     for agent in simulation_state.get_all_agents():
-        print(f"Agent: {agent.id}")
+        if agent.role == AgentRole.CLIENT:
+            print(f"Client: {agent.id}")
+        elif agent.role == AgentRole.SERVER:
+            print(f"Server: {agent.id}")
         print(f"Tokens: {agent.my_tokens}")
 
 def check_liveness():
@@ -64,6 +71,7 @@ def check_liveness():
             if client.during_action:
                 any_not_liveness = True
                 print(f'Client ...{client.id[-4:]} did NOT finished all executions --> LIVENESS DOESN\'T HOLD')
+                print(f'Client has the following upons: {[entry[0].__name__ for entry in client.upon_registry]}')
             else:
                 print(f'Client ...{client.id[-4:]} finished all executions ----------> LIVENESS HOLDS')
 

@@ -87,11 +87,23 @@ class Simulator:
     # Adds msg into the queue.
     # If the message is broadcast then we duplicate it for every server
     def add_msg_to_queue(self, msg):
-        if msg.receiver_id == Message.BROADCAST_SERVER:
+        if msg.receiver_id == Message.BROADCAST_ALL:
+            # Duplicate the message to all agents
+            for agent in simulation_state.get_all_agents():
+                duplicated_msg = copy.copy(msg)
+                duplicated_msg.receiver_id = agent.id
+                self.msgs_queue.append(duplicated_msg)
+        elif msg.receiver_id == Message.BROADCAST_SERVER:
             # Duplicate the message to all servers
             for server in simulation_state.get_all_servers():
                 duplicated_msg = copy.copy(msg)
                 duplicated_msg.receiver_id = server.id
+                self.msgs_queue.append(duplicated_msg)
+        elif msg.receiver_id == Message.BROADCAST_CLIENT:
+            # Duplicate the message to all clients
+            for client in simulation_state.get_all_clients():
+                duplicated_msg = copy.copy(msg)
+                duplicated_msg.receiver_id = client.id
                 self.msgs_queue.append(duplicated_msg)
         else:
             self.msgs_queue.append(msg)
@@ -115,4 +127,6 @@ class Simulator:
     def close(self):
         simulation_state.CLIENT_PAY_RATE = 0
         simulation_state.CLIENT_GET_RATE = 0
-        simulation_state.TRANSFORM_RATE = 0
+        simulation_state.CLIENT_NONE_RATE = 1
+        simulation_state.CLIENT_TRANSFORM_RATE = 0
+        simulation_state.SERVER_TRANSFORM_RATE = 0

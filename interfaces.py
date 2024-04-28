@@ -22,10 +22,12 @@ class MessageType(Enum):
     GET_TOKENS = 4
     ACK_GET_TOKENS = 5
     ACK_DB_UPDATE = 6
-    OK = 7
+    TURNED_TO_CLIENT = 7
 
 class Message:
+    BROADCAST_ALL    = 0
     BROADCAST_SERVER = 1
+    BROADCAST_CLIENT = 2
 
     def __init__(self, type : MessageType, sender_id, receiver_id, content):
         self.type = type
