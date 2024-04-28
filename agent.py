@@ -51,7 +51,11 @@ class Agent:
         elif simulation_state.READ_FROM_LOG:
             # If we are reading from log, then pop the finish action from it
             if action_type in [ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
-                simulation_state.action_log.pop()
+                # Remove the corresponding finish in the action log
+                for i, log_entry in enumerate(simulation_state.action_log):
+                    if log_entry[0] == self.id and log_entry[2] == action_type:
+                        simulation_state.action_log.pop(i)
+                        break
 
     def step(self, msg_in) -> Optional[Message]:
         msg_out = None
@@ -80,21 +84,24 @@ class Agent:
             self.last_action_timestamp = simulation_state.step_counter
 
         # If didn't receive a msg we can maybe do an action (if one is not in progress)
-        # If we run from the logs then we maybe pop an action from it
-        elif simulation_state.READ_FROM_LOG:
-            # If the next action is ours then pop it
-            if simulation_state.action_log[0][0] == self.id:
-                _, _, action_type, action_msg = simulation_state.action_log.pop()
-                self.log_action(action_type, action_msg)
-                msg_out = action_msg
-        else:            
-            # Decide randomly if to transform
-            if not self.during_action and self.should_transform():
-                msg_out = self.transform()
+        elif not self.during_action:
+            # If we run from the logs then we maybe pop an action from it
+            if simulation_state.READ_FROM_LOG:
+                # If the next action is ours then pop it
+                if len(simulation_state.action_log) != 0 and simulation_state.action_log[0][0] == self.id:
+                    _, _, action_type, action_msg = simulation_state.action_log.pop(0)
+                    if action_type == ActionType.PAY_START or action_type == ActionType.GET_TOKENS_START:
+                        msg_out = self.client_create_action(action_msg)
+                    elif action_type == ActionType.CLIENT_TRANSFORM_START or action_type == ActionType.SERVER_TRANSFORM_START:
+                        msg_out = self.transform()
+            else:            
+                # Decide randomly if to transform
+                if self.should_transform():
+                    msg_out = self.transform()
 
-            # Decide randomly if to do an action (clients only)
-            elif not self.during_action and self.role == AgentRole.CLIENT:
-                msg_out = self.client_create_action()
+                # Decide randomly if to do an action (clients only)
+                elif self.role == AgentRole.CLIENT:
+                    msg_out = self.client_create_action()
 
         return msg_out
 
@@ -130,7 +137,6 @@ class Agent:
         return False
 
     def transform(self) -> Message:
-        
         # Run the specific logic of the role
         if self.role == AgentRole.CLIENT:
             simulation_state.client_transforming_flag = 1
@@ -220,31 +226,30 @@ class Agent:
 
         return to_send
 
-    def client_create_action(self) -> Optional[Message]:
+    def client_create_action(self, premade_msg = None) -> Optional[Message]:
         ACTIONS = [
             [MessageType.PAY, MessageType.GET_TOKENS, None], 
             [simulation_state.CLIENT_PAY_RATE, simulation_state.CLIENT_GET_RATE, simulation_state.CLIENT_NONE_RATE]
         ]
     
-        action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0]
+        action_type = random.choices(ACTIONS[0], ACTIONS[1], k=1)[0] if not premade_msg else premade_msg.type
         
         if action_type == MessageType.PAY and (len(self.my_tokens) > 0):
-            return self.run_get_then_pay_request()
+            return self.run_get_then_pay_request(premade_msg)
         elif action_type == MessageType.GET_TOKENS:
-            return self.run_get_request()
+            return self.run_get_request(False, premade_msg)
         else:
             return None
 
-    def run_get_then_pay_request(self):
-        return self.run_get_request(part_of_pay_request=True)
+    def run_get_then_pay_request(self, premade_msg = None):
+        return self.run_get_request(True, premade_msg)
 
-    def run_pay_request(self) -> Message:
+    def run_pay_request(self, premade_msg = None) -> Message:
         # Choose a random token to send and a random owner to receive
-
-        token_to_sell = random.choice(self.my_tokens)
-        buyer_id = simulation_state.get_random_agent().id
+        token_to_sell = random.choice(self.my_tokens) if not premade_msg else [token for token in self.my_tokens if token.id == premade_msg.content[0]][0]
+        buyer_id = simulation_state.get_random_agent().id if not premade_msg else premade_msg.content[1]
         to_send = Message(MessageType.PAY, self.id, Message.BROADCAST_SERVER, (token_to_sell.id, buyer_id, token_to_sell.version + 1))
-        
+
         self.log_action(ActionType.PAY_START, to_send)
         print(f'~~PAY//STARTED~~ :: [...{str(self.id)[-4:]}]')
         print(f'$$$TOKEN-SUGG$$$ :: Token ID: [...{str(token_to_sell.id)[-4:]}] / Version: {token_to_sell.version} :: [...{str(self.id)[-4:]}] --> [...{str(buyer_id)[-4:]}]')
@@ -279,11 +284,14 @@ class Agent:
 
         return to_send
 
-    def run_get_request(self, part_of_pay_request=False) -> Message:
+    def run_get_request(self, part_of_pay_request=False, premade_msg = None) -> Message:
         # send <getToken, random_owner> to all
+        if part_of_pay_request:
+            owner_id = 0
+        else:
+            owner_id = simulation_state.get_random_agent().id if not premade_msg else premade_msg.content
 
-        owner_id = simulation_state.get_random_agent().id
-        to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, ())
+        to_send = Message(MessageType.GET_TOKENS, self.id, Message.BROADCAST_SERVER, (owner_id))
         self.log_action(ActionType.GET_TOKENS_START, to_send)
 
         # When receiving answers
@@ -305,15 +313,10 @@ class Agent:
 
             # Filter tokens by owner_id
             owner_tokens = [(token_id, token) for token_id, token in agent.tokens_db.items() if token.owner == owner_id]
-            # Now the db is updated and owner_tokens holds all tokens belonging to the requested owner - what are we supposed to do?
-            # TODO: understand this
-            # print("Managed to collect get for " + owner_id)
-            # print(owner_tokens)
+            # Now the db is updated and owner_tokens holds all tokens belonging to the requested owner
 
             if part_of_pay_request:
-                msg_out = self.run_pay_request()
-                self.last_action_msg = msg_out
-                return msg_out
+                return self.run_pay_request(premade_msg)
 
             # Unlock action-doing
             agent.during_action = False

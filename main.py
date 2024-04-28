@@ -23,10 +23,12 @@ def run_simulation_test():
     sim.close()
 
     # Run steps until finish
-    step = STEPS_UNTIL_CLOSE + 1
-    while sim.msgs_queue:
-        step += 1
-        print(f'--------- Step #{step} ---------')
+    while sim.msgs_queue or (simulation_state.LOG_RUN and len(simulation_state.action_log) > 0):
+        simulation_state.step_counter += 1
+        if simulation_state.step_counter > 100000:
+            print('Infinite loop detected. Exiting...')
+            break
+        print(f'--------- Step #{simulation_state.step_counter + 1} ---------')
         sim.step()
 
     # Print final state
