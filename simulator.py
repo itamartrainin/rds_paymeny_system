@@ -75,7 +75,7 @@ class Simulator:
             print(f'===>RECEIVED<=== :: {msg.type} :: {simulation_state.get_agent_role_by_id(msg.sender_id)} [...{str(msg.sender_id)[-4:]}] --> {receiver_agent.role} [...{str(receiver_agent.id)[-4:]}]')
             response_msg = receiver_agent.step(msg)
             if response_msg is not None:
-                print(f'<=====SENT=====> :: {msg.type} :: {receiver_agent.role} [...{str(receiver_agent.id)[-4:]}] --> {simulation_state.get_agent_role_by_id(msg.receiver_id)} [...{str(msg.receiver_id)[-4:]}]')
+                print(f'<=====SENT=====> :: {response_msg.type} :: {receiver_agent.role} [...{str(receiver_agent.id)[-4:]}] --> {simulation_state.get_agent_role_by_id(response_msg.receiver_id)} [...{str(response_msg.receiver_id)[-4:]}]')
             
             self.add_msg_to_queue(response_msg) if response_msg is not None else None
 

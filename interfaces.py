@@ -23,6 +23,7 @@ class MessageType(Enum):
     ACK_GET_TOKENS = 5
     ACK_DB_UPDATE = 6
     TURNED_TO_CLIENT = 7
+    TURNED_TO_SERVER = 8
 
 class Message:
     BROADCAST_ALL    = 0

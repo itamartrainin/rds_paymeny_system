@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import copy
 from enum import Enum
 import random
 from typing import List, Optional
@@ -54,11 +55,14 @@ class Agent:
         # Decide randomly if to transform
         elif not self.during_action and self.should_transform():
             msg_out = self.transform()
+            self.last_action_msg = msg_out
 
         # Decide randomly if to do an action (clients only)
         elif not self.during_action and self.role == AgentRole.CLIENT:
             msg_out = self.client_create_action()
+            self.last_action_msg = msg_out
 
+        #TODO: only drop regular responses and not actions
         should_omit_outgoing = omit_msg()
         if should_omit_outgoing:
             # Agent decides to omit outgoing message
@@ -131,6 +135,12 @@ class Agent:
                 if len(msgs) >= upon_amount():
                     self.upon_registry.remove(upon)
                     return func_to_run(self, msgs)
+        
+        # if a client turned server, we send him our in-process action
+        if msg_in.type == MessageType.TURNED_TO_SERVER and self.during_action:
+            copy_last_action = copy.deepcopy(self.last_action_msg) 
+            copy_last_action.receiver_id = msg_in.sender_id
+            return copy_last_action
 
         return None
         
@@ -171,7 +181,8 @@ class Agent:
                 self.set_omission_rate(simulation_state.FAULTY_OMISSION_RATE)
                 simulation_state.faulty_counter += 1
 
-            return None
+            # Tell clients to send their actions
+            return Message(MessageType.TURNED_TO_SERVER, agent.id, Message.BROADCAST_CLIENT, ())
 
         # Register the function to handle the incoming messages
         self.register_upon(handle_transform_get, 
@@ -269,7 +280,8 @@ class Agent:
             # print(owner_tokens)
 
             if part_of_pay_request:
-                return self.run_pay_request()
+                msg_out = self.run_pay_request()
+                self.last_action_msg = msg_out
 
             # Unlock action-doing
             agent.during_action = False
@@ -303,7 +315,7 @@ class Agent:
         token = self.tokens_db[token_id]
 
         # Check that this version is newer - won't happen only if this is an old message
-        if token is not None and token.version < new_version:
+        if token is not None and token.version <= new_version:
             # Transfer token to buyer
             token.owner = new_owner
             token.version = new_version
