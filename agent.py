@@ -17,6 +17,7 @@ class Agent:
         self.id = simulation_state.IDS.pop()
         self.during_action = False
         self.is_faulty = False
+        self.last_action_msg = None
 
     def set_omission_rate(self, omission_rate):
         self.omission_rate = omission_rate
@@ -37,6 +38,14 @@ class Agent:
         return self.is_faulty and (random.random() < self.omission_rate)
     
     def log_action(self, action_type, action_msg = None):
+        # Some actions we save for repeating in case of omissions or transformations
+        if action_type in [ActionType.PAY_START, ActionType.GET_TOKENS_START, ActionType.CLIENT_TRANSFORM_START, ActionType.SERVER_TRANSFORM_START]:
+            self.last_action_msg = action_msg
+            self.last_action_timestamp = simulation_state.step_counter
+        elif action_type in [ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
+            self.last_action_msg = None
+            self.last_action_timestamp = None
+
         if simulation_state.WRITE_TO_LOG:
             simulation_state.action_log.append((self.id, simulation_state.step_counter, action_type, action_msg))
         elif simulation_state.READ_FROM_LOG:
@@ -62,24 +71,30 @@ class Agent:
                     msg_out = None
 
         # For simplicity, we ignore sending omission when running a self initiated action
+        
+        # Check if we have an action that didn't finish in a long time
+        elif self.last_action_msg is not None and simulation_state.step_counter - self.last_action_timestamp > simulation_state.ACTION_TIMEOUT:
+            # Do the action again
+            print(f'!ACTION//TIMEOUT! :: [...{str(self.id)[-4:]}] :: ~REPEATING~ :: {self.last_action_msg}')
+            msg_out = self.last_action_msg
+            self.last_action_timestamp = simulation_state.step_counter
+
         # If didn't receive a msg we can maybe do an action (if one is not in progress)
         # If we run from the logs then we maybe pop an action from it
         elif simulation_state.READ_FROM_LOG:
             # If the next action is ours then pop it
             if simulation_state.action_log[0][0] == self.id:
-                _, _, _, action_msg = simulation_state.action_log.pop()
+                _, _, action_type, action_msg = simulation_state.action_log.pop()
+                self.log_action(action_type, action_msg)
                 msg_out = action_msg
-                self.last_action_msg = msg_out
         else:            
             # Decide randomly if to transform
             if not self.during_action and self.should_transform():
                 msg_out = self.transform()
-                self.last_action_msg = msg_out
 
             # Decide randomly if to do an action (clients only)
             elif not self.during_action and self.role == AgentRole.CLIENT:
                 msg_out = self.client_create_action()
-                self.last_action_msg = msg_out
 
         return msg_out
 

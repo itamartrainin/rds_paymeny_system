@@ -113,8 +113,8 @@ for sim_counter in range(NUM_SIMULATIONS):
     simulation_state.ALLOW_FAULTY = False #True
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.5
-    simulation_state.CLIENT_OMISSION_RATE = 0#0.3
-    simulation_state.SERVER_OMISSION_RATE = 0
+    simulation_state.CLIENT_OMISSION_RATE = 0.1 #0.3
+    simulation_state.SERVER_OMISSION_RATE = 0.8
     simulation_state.TRANSFORM_RATE = 0.2
 
     final_db_omissions = run_simulation_test()
