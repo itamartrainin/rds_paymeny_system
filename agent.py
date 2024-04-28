@@ -48,7 +48,12 @@ class Agent:
         should_omit_incoming = omit_msg()
         if msg_in is not None and not should_omit_incoming:
             # Agent decided not to omit incoming message.
-            msg_out = self.handle_incoming(msg_in)
+            should_omit_outgoing = omit_msg()
+            if should_omit_outgoing:
+                # Agent decides to omit outgoing message
+                msg_out = None
+            else:
+                msg_out = self.handle_incoming(msg_in)
 
         # For simplicity, we ignore sending omission when running a self initiated action
         # If didn't receive a msg we can maybe do an action (if one is not in progress)
@@ -61,12 +66,6 @@ class Agent:
         elif not self.during_action and self.role == AgentRole.CLIENT:
             msg_out = self.client_create_action()
             self.last_action_msg = msg_out
-
-        #TODO: only drop regular responses and not actions
-        should_omit_outgoing = omit_msg()
-        if should_omit_outgoing:
-            # Agent decides to omit outgoing message
-            msg_out = None
 
         return msg_out
 
