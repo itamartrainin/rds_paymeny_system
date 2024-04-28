@@ -13,8 +13,9 @@ def run_simulation_test():
     print_summary()
 
     # Run steps until close
-    for step in range(STEPS_UNTIL_CLOSE):
-        print(f'--------- Step #{step + 1} ---------')
+    for _ in range(STEPS_UNTIL_CLOSE):
+        simulation_state.step_counter += 1
+        print(f'--------- Step #{simulation_state.step_counter + 1} ---------')
         sim.step()
 
     # Call close
@@ -83,7 +84,7 @@ def check_liveness():
         return True
 
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 100
 STEPS_UNTIL_CLOSE = 200
 
 liveness_results = []
@@ -93,10 +94,10 @@ for sim_counter in range(NUM_SIMULATIONS):
     """
     Run with omissions
     """
-    simulation_state.ALLOW_FAULTY = True
+    simulation_state.ALLOW_FAULTY = False#True
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.5
-    simulation_state.CLIENT_OMISSION_RATE = 0.3
+    simulation_state.CLIENT_OMISSION_RATE = 0#0.3
     simulation_state.SERVER_OMISSION_RATE = 0.8
     simulation_state.TRANSFORM_RATE = 0.2
 

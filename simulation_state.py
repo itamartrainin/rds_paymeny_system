@@ -23,7 +23,6 @@ SERVER_OMISSION_RATE = 0 # 0.8
 CLIENT_TRANSFORM_RATE = 0.1 # 0.1
 SERVER_TRANSFORM_RATE = 0.1 # 0.1
 
-
 # Ongoing State
 agents = {}
 servers = {}
@@ -32,6 +31,7 @@ clients = {}
 client_transforming_flag = 0 # We allow only one client to transform at a time
 amount_transforming_into_clients = 0
 faulty_counter = 0 
+step_counter = 0
 
 def get_agents_amount():
     return len(agents.values())
