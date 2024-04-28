@@ -36,9 +36,17 @@ def run_simulation_test():
     # Print the log
     print_action_log()
 
+    return compute_final_db()
+
 def compute_final_db():
-    # Collect all dbs from servers and combine them to the final DB.
-    raise NotImplementedError
+    # final_db = {}
+    # for server in simulation_state.servers.values():
+    #     if not server.is_faulty:
+    #         for token_id, token in server.tokens_db:
+    #             if token_id not in
+    #         print()
+    # return final_db
+    return None
 
 def print_step_summary():
     print(f'\n :: Step Summary :: \n'
@@ -60,7 +68,7 @@ def print_summary():
             print(f"Client: {agent.id}")
         elif agent.role == AgentRole.SERVER:
             print(f"Server: {agent.id}")
-        print(f"Tokens: {agent.my_tokens}")
+        print(f"Tokens: {[token.id for token in agent.my_tokens]}")
 
 def print_action_log():
     print("\n---------- Action Log ----------")
@@ -96,7 +104,7 @@ def check_liveness():
         return True
 
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 100
 STEPS_UNTIL_CLOSE = 200
 
 
@@ -110,7 +118,7 @@ for sim_counter in range(NUM_SIMULATIONS):
     simulation_state.LOG_RUN = 0
     READ_FROM_LOG = simulation_state.LOG_RUN
     WRITE_TO_LOG = 1 - READ_FROM_LOG
-    simulation_state.ALLOW_FAULTY = False #True
+    simulation_state.ALLOW_FAULTY = True #True
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.5
     simulation_state.CLIENT_OMISSION_RATE = 0.1 #0.3
@@ -138,7 +146,8 @@ for sim_counter in range(NUM_SIMULATIONS):
 
     final_db_no_omissions = run_simulation_test()
 
-    check_liveness()
+    liveness = check_liveness()
+    liveness_results.append(liveness)
 
     # TODO: Make sure final_db_omissions == final_db_no_omissions
 
