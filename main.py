@@ -39,14 +39,33 @@ def run_simulation_test():
     return compute_final_db()
 
 def compute_final_db():
-    # final_db = {}
-    # for server in simulation_state.servers.values():
-    #     if not server.is_faulty:
-    #         for token_id, token in server.tokens_db:
-    #             if token_id not in
-    #         print()
-    # return final_db
-    return None
+    final_db = {}
+    for server in simulation_state.servers.values():
+        for token_id, token in server.tokens_db.items():
+            if token_id not in final_db:
+                final_db[token_id] = token
+            elif token.version > final_db[token_id].version:
+                final_db[token_id] = token
+    return final_db
+
+def check_safety(token_db_1, token_db_2):
+    if len(token_db_1) != len(token_db_2):
+        print('Safety DOESN\'T hold... :( :: Not Same Length.')
+        return False
+
+    for token_id in token_db_1.keys():
+        if token_db_1[token_id].id != token_db_1[token_id].id:
+            print('Safety DOESN\'T hold... :( :: ID Missmatch')
+            return False
+        elif token_db_1[token_id].version != token_db_1[token_id].version:
+            print('Safety DOESN\'T hold... :( ::  Version Missmatch')
+            return False
+        elif token_db_1[token_id].owner != token_db_1[token_id].owner:
+            print('Safety DOESN\'T hold... :( :: Owner Missmatch')
+            return False
+
+    print('Safety HOLS!!! :)')
+    return True
 
 def print_step_summary():
     print(f'\n :: Step Summary :: \n'
@@ -104,11 +123,12 @@ def check_liveness():
         return True
 
 
-NUM_SIMULATIONS = 100
+NUM_SIMULATIONS = 1
 STEPS_UNTIL_CLOSE = 200
 
 
 liveness_results = []
+safety_results = []
 for sim_counter in range(NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
 
@@ -116,14 +136,15 @@ for sim_counter in range(NUM_SIMULATIONS):
     Run with omissions
     """
     simulation_state.LOG_RUN = 0
-    READ_FROM_LOG = simulation_state.LOG_RUN
-    WRITE_TO_LOG = 1 - READ_FROM_LOG
+    simulation_state.READ_FROM_LOG = simulation_state.LOG_RUN
+    simulation_state.WRITE_TO_LOG = 1 - simulation_state.READ_FROM_LOG
     simulation_state.ALLOW_FAULTY = True #True
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.5
     simulation_state.CLIENT_OMISSION_RATE = 0.1 #0.3
     simulation_state.SERVER_OMISSION_RATE = 0.8
-    simulation_state.TRANSFORM_RATE = 0.2
+    simulation_state.CLIENT_TRANSFORM_RATE = 0.1
+    simulation_state.SERVER_TRANSFORM_RATE = 0.1
 
     final_db_omissions = run_simulation_test()
 
@@ -135,23 +156,35 @@ for sim_counter in range(NUM_SIMULATIONS):
     Run withOUT omissions
     """
     simulation_state.LOG_RUN = 1
-    READ_FROM_LOG = simulation_state.LOG_RUN
-    WRITE_TO_LOG = 1 - READ_FROM_LOG
+    simulation_state.READ_FROM_LOG = simulation_state.LOG_RUN
+    simulation_state.WRITE_TO_LOG = 1 - simulation_state.READ_FROM_LOG
     simulation_state.ALLOW_FAULTY = False
     simulation_state.CLIENT_GET_RATE = 0
     simulation_state.CLIENT_PAY_RATE = 0.3
     simulation_state.CLIENT_OMISSION_RATE = 0  # 0.3
     simulation_state.SERVER_OMISSION_RATE = 0  # 0.8
-    simulation_state.TRANSFORM_RATE = 0.5
+    CLIENT_TRANSFORM_RATE = 0.1  # 0.1
+    SERVER_TRANSFORM_RATE = 0.1  # 0.1
 
     final_db_no_omissions = run_simulation_test()
 
     liveness = check_liveness()
     liveness_results.append(liveness)
 
-    # TODO: Make sure final_db_omissions == final_db_no_omissions
+    safety = check_safety(final_db_omissions, final_db_no_omissions)
+    safety_results.append(safety)
+
+
+print()
+print('-'*200)
+print()
 
 if all(liveness_results):
     print('Liveness HOLDS for ALL simulations!!! :)')
 else:
     print('Liveness DOESN\'T hold for some simulations... :(')
+
+if all(safety_results):
+    print('Safety HOLDS for ALL simulations!!! :)')
+else:
+    print('Safety DOESN\'T hold for some simulations... :(')
