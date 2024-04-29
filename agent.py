@@ -132,7 +132,7 @@ class Agent:
             rand_choice = random.random()
             if self.role == AgentRole.CLIENT:
                 return rand_choice < simulation_state.CLIENT_TRANSFORM_RATE and not simulation_state.client_transforming_flag
-            elif self.role == AgentRole.SERVER:
+            elif self.role == AgentRole.SERVER and (self.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2):
                 return rand_choice < simulation_state.SERVER_TRANSFORM_RATE and not simulation_state.server_transforming_flag
         return False
 
@@ -390,27 +390,26 @@ class Agent:
         def handle_ack_db_update(agent: Agent, msgs: List[Message]):
             # Actual transformation to client logic
             # Transform only if there are less faulty servers than required or self is a faulty server
-            if agent.is_faulty or simulation_state.faulty_counter < (len(simulation_state.servers) - 1) / 2:
-                del simulation_state.servers[agent.id]
-                simulation_state.clients[agent.id] = agent
-                agent.role = AgentRole.CLIENT
-                simulation_state.server_transforming_flag = 0
+            del simulation_state.servers[agent.id]
+            simulation_state.clients[agent.id] = agent
+            agent.role = AgentRole.CLIENT
+            simulation_state.server_transforming_flag = 0
 
-                # Decide if new client is faulty
-                # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
-                #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
+            # Decide if new client is faulty
+            # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
+            #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
-                if self.is_faulty:
-                    agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
+            if self.is_faulty:
+                agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
-                print(f'!TRANSFORMATION! :: [...{str(agent.id)[-4:]}] :: ~DONE~ :: SERVER --> CLIENT.')
-                self.log_action(ActionType.SERVER_TRANSFORM_FINISH)
+            print(f'!TRANSFORMATION! :: [...{str(agent.id)[-4:]}] :: ~DONE~ :: SERVER --> CLIENT.')
+            self.log_action(ActionType.SERVER_TRANSFORM_FINISH)
 
-                # Unlock action-doing
-                agent.during_action = False
+            # Unlock action-doing
+            agent.during_action = False
 
-                # Send a message to all clients to announce change
-                return Message(MessageType.TURNED_TO_CLIENT, agent.id, Message.BROADCAST_CLIENT, ())
+            # Send a message to all clients to announce change
+            return Message(MessageType.TURNED_TO_CLIENT, agent.id, Message.BROADCAST_CLIENT, ())
 
         # Register the function to handle the incoming messages
         self.register_upon(handle_ack_db_update,
