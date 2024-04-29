@@ -395,10 +395,6 @@ class Agent:
             agent.role = AgentRole.CLIENT
             simulation_state.server_transforming_flag = 0
 
-            # Decide if new client is faulty
-            # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
-            #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
-
             if self.is_faulty:
                 agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
