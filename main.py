@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import copy
+import pickle
 
 from interfaces import AgentRole, MessageType
 from simulator import Simulator
@@ -133,6 +134,7 @@ def check_liveness():
 
 liveness_results = []
 safety_results = []
+
 for sim_counter in range(simulation_state.NUM_SIMULATIONS):
     print(f'~~~~~~~~~~ SIMULATION #{sim_counter + 1} ~~~~~~~~~~')
 
@@ -164,7 +166,7 @@ for sim_counter in range(simulation_state.NUM_SIMULATIONS):
     simulation_state.WRITE_TO_LOG = 1 - simulation_state.READ_FROM_LOG
     simulation_state.ALLOW_FAULTY = False
     simulation_state.CLIENT_GET_RATE = 0
-    simulation_state.CLIENT_PAY_RATE = 0.3
+    simulation_state.CLIENT_PAY_RATE = 0.5
     simulation_state.CLIENT_OMISSION_RATE = 0  # 0.3
     simulation_state.SERVER_OMISSION_RATE = 0  # 0.8
     CLIENT_TRANSFORM_RATE = 0.1  # 0.1
@@ -177,6 +179,56 @@ for sim_counter in range(simulation_state.NUM_SIMULATIONS):
 
     safety = check_safety(final_db_omissions, final_db_no_omissions)
     safety_results.append(safety)
+
+
+# ############### Linearization Test ###############
+print('############### Linearization Test ###############')
+lin_test_scenario_a_log, lin_test_scenario_b_log = pickle.load(open('lin_test.pkl', 'rb'))
+"""
+Run with omissions
+"""
+simulation_state.LOG_RUN = 1
+simulation_state.READ_FROM_LOG = simulation_state.LOG_RUN
+simulation_state.WRITE_TO_LOG = 1 - simulation_state.READ_FROM_LOG
+simulation_state.ALLOW_FAULTY = True #True
+simulation_state.CLIENT_GET_RATE = 0
+simulation_state.CLIENT_PAY_RATE = 0.3
+simulation_state.CLIENT_OMISSION_RATE = 0.1 #0.3
+simulation_state.SERVER_OMISSION_RATE = 0.8
+simulation_state.CLIENT_TRANSFORM_RATE = 0.1
+simulation_state.SERVER_TRANSFORM_RATE = 0.1
+
+simulation_state.action_log = lin_test_scenario_a_log
+
+final_db_omissions = run_simulation_test()
+
+# Liveness and Safety Checks
+liveness = check_liveness()
+liveness_results.append(liveness)
+
+"""
+Run withOUT omissions
+"""
+simulation_state.LOG_RUN = 1
+simulation_state.READ_FROM_LOG = simulation_state.LOG_RUN
+simulation_state.WRITE_TO_LOG = 1 - simulation_state.READ_FROM_LOG
+simulation_state.ALLOW_FAULTY = False
+simulation_state.CLIENT_GET_RATE = 0
+simulation_state.CLIENT_PAY_RATE = 0.3
+simulation_state.CLIENT_OMISSION_RATE = 0  # 0.3
+simulation_state.SERVER_OMISSION_RATE = 0  # 0.8
+CLIENT_TRANSFORM_RATE = 0.1  # 0.1
+SERVER_TRANSFORM_RATE = 0.1  # 0.1
+
+simulation_state.action_log = lin_test_scenario_b_log
+
+final_db_no_omissions = run_simulation_test()
+
+liveness = check_liveness()
+liveness_results.append(liveness)
+
+safety = check_safety(final_db_omissions, final_db_no_omissions)
+safety_results.append(safety)
 
 
 print()
