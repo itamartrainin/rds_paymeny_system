@@ -183,6 +183,20 @@ for sim_counter in range(simulation_state.NUM_SIMULATIONS):
 
 # ############### Linearization Test ###############
 print('############### Linearization Test ###############')
+# Scenario 1:
+#   Client A initiates GET_TOKENS request
+#   Client B initiates PAY request
+#   Client B's PAY requests reaches the linearizability point
+#   Client A's GET_TOKENS request finishes
+#   Client B's PAY request finishes.
+#
+# Scenario 2:
+#   Client A initiates GET_TOKENS request
+#   Client B initiates PAY request
+#   Client B's PAY requests reaches the linearizability point
+#   Client B's PAY request finishes.
+#   Client A's GET_TOKENS request finishes
+#
 lin_test_scenario_a_log, lin_test_scenario_b_log = pickle.load(open('lin_test.pkl', 'rb'))
 """
 Run with omissions
