@@ -55,7 +55,7 @@ class Agent:
 
         elif simulation_state.READ_FROM_LOG:
             # If we are reading from log, then pop the finish action from it
-            if action_type in [ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
+            if action_type in [ActionType.PAY_LINEARIZATION, ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
                 # Remove the corresponding finish in the action log
                 for i, log_entry in enumerate(simulation_state.action_log):
                     if log_entry[0] == self.id and log_entry[2] == action_type:
