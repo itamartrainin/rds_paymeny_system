@@ -60,8 +60,6 @@ class Simulator:
                 agent_role = AgentRole.CLIENT
                 agent = Agent(agent_role)
                 simulation_state.clients[agent.id] = agent
-                # if simulation_state.ALLOW_FAULTY and random.random() < simulation_state.CLIENT_FAULTY_RATE:
-                #     agent.set_omission_rate(simulation_state.CLIENT_OMISSION_RATE)
 
             simulation_state.agents[agent.id] = agent
 

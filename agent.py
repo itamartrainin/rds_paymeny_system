@@ -48,6 +48,11 @@ class Agent:
 
         if simulation_state.WRITE_TO_LOG:
             simulation_state.action_log.append((self.id, simulation_state.step_counter, action_type, action_msg))
+
+            # Pay actions linearization point is not at the end of the action
+            if action_type == ActionType.PAY_START:
+                simulation_state.mark_pay_start(self.id, simulation_state.step_counter)
+
         elif simulation_state.READ_FROM_LOG:
             # If we are reading from log, then pop the finish action from it
             if action_type in [ActionType.PAY_FINISH, ActionType.GET_TOKENS_FINISH, ActionType.CLIENT_TRANSFORM_FINISH, ActionType.SERVER_TRANSFORM_FINISH]:
@@ -354,6 +359,10 @@ class Agent:
             # Transfer token to buyer
             token.owner = new_owner
             token.version = new_version
+
+            # Check the linearization of the pay
+            simulation_state.mark_pay_answer(msg_in.sender_id, simulation_state.step_counter)
+
             return Message(MessageType.ACK_PAY, self.id, msg_in.sender_id, (token_id, token.version))
 
     def server_handle_get_tokens(self, msg_in: Message):

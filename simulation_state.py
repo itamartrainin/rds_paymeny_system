@@ -111,3 +111,24 @@ def update_lists(changed_agent):
     elif changed_agent.role == interfaces.AgentRole.SERVER:
         servers.pop(changed_agent.id)
         clients[changed_agent.id] = changed_agent
+
+
+# Helper functions for calculating linearizability of PAY actions
+ongoing_pay_actions = {}
+
+def mark_pay_start(agent_id, step):
+    ongoing_pay_actions[agent_id] = [step, 0]
+
+def mark_pay_answer(agent_id, step):
+    # If the agent is not in the ongoing pay actions, ignore the message
+    if agent_id not in ongoing_pay_actions:
+        return
+
+    ongoing_pay_actions[agent_id][1] += 1
+
+    # Check if enough servers answered - meaning this is the linearization point
+    if ongoing_pay_actions[agent_id][1] == get_n_minus_t_amount():
+        ongoing_pay_actions.pop(agent_id)
+        
+        # Log the linearization point to the actions log
+        action_log.append((agent_id, step, interfaces.ActionType.PAY_LINEARIZATION, None))
