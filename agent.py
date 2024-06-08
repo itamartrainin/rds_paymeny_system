@@ -46,12 +46,12 @@ class Agent:
             self.last_action_msg = None
             self.last_action_timestamp = None
 
+        # Pay actions linearization point is not at the end of the action
+        if action_type == ActionType.PAY_START:
+            simulation_state.mark_pay_start(self.id, simulation_state.step_counter)
+
         if simulation_state.WRITE_TO_LOG:
             simulation_state.action_log.append((self.id, simulation_state.step_counter, action_type, action_msg))
-
-            # Pay actions linearization point is not at the end of the action
-            if action_type == ActionType.PAY_START:
-                simulation_state.mark_pay_start(self.id, simulation_state.step_counter)
 
         elif simulation_state.READ_FROM_LOG:
             # If we are reading from log, then pop the finish action from it
@@ -59,6 +59,8 @@ class Agent:
                 # Remove the corresponding finish in the action log
                 for i, log_entry in enumerate(simulation_state.action_log):
                     if log_entry[0] == self.id and log_entry[2] == action_type:
+                        if action_type == ActionType.PAY_LINEARIZATION:
+                            print(f'$$$PAY_LINEAR$$$ :: Seller: [...{str(self.id)[-4:]}]')
                         simulation_state.action_log.pop(i)
                         break
 
@@ -92,8 +94,9 @@ class Agent:
         elif not self.during_action:
             # If we run from the logs then we maybe pop an action from it
             if simulation_state.READ_FROM_LOG:
-                # If the next action is ours then pop it
-                if len(simulation_state.action_log) != 0 and simulation_state.action_log[0][0] == self.id:
+                # If the next action is ours and is a start then pop it
+                if len(simulation_state.action_log) != 0 and simulation_state.action_log[0][0] == self.id and \
+                    simulation_state.action_log[0][2] != [ActionType.PAY_LINEARIZATION, ActionType.GET_TOKENS_START, ActionType.CLIENT_TRANSFORM_START, ActionType.SERVER_TRANSFORM_START]:
                     _, _, action_type, action_msg = simulation_state.action_log.pop(0)
                     if action_type == ActionType.PAY_START or action_type == ActionType.GET_TOKENS_START:
                         msg_out = self.client_create_action(action_msg)

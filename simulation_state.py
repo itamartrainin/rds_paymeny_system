@@ -130,5 +130,5 @@ def mark_pay_answer(agent_id, step):
     if ongoing_pay_actions[agent_id][1] == get_n_minus_t_amount():
         ongoing_pay_actions.pop(agent_id)
         
-        # Log the linearization point to the actions log
-        action_log.append((agent_id, step, interfaces.ActionType.PAY_LINEARIZATION, None))
+        # Log the linearization point
+        agents[agent_id].log_action(interfaces.ActionType.PAY_LINEARIZATION)
